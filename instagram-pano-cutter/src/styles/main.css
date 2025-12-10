@@ -358,6 +358,26 @@ body {
     height: 20px;
 }
 
+/* Number input styles */
+.number-input {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+/* Padding inputs */
+.padding-inputs {
+    display: flex;
+    flex-direction: row;
+    gap: var(--spacing-md);
+}
+
+.padding-input {
+    display: flex;
+    flex-direction: row;
+    gap: var(--spacing-sm);
+}
+
 /* Color picker */
 .color-options {
     display: flex;

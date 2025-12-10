@@ -56,6 +56,35 @@ export class ControlPanel {
           </label>
         </div>
       </div>
+
+      <div class="control-group">
+        <label class="control-label">Manual Padding</label>
+        <p class="control-hint">Optional margins added before slicing</p>
+        <div class="padding-inputs">
+          <label class="padding-input">
+            <span class="number-input-label">V</span>
+            <input
+              type="number"
+              name="manualPaddingY"
+              min="0" max="100"
+              step="1"
+              value="${this.convertPixelsToRem(this.config.manualPaddingY)}"
+              aria-label="Vertical padding in rem"
+            />
+          </label>
+          <label class="padding-input">
+            <span class="number-input-label">H</span>
+            <input
+              type="number"
+              name="manualPaddingX"
+              min="0" max="100"
+              step="1"
+              value="${this.convertPixelsToRem(this.config.manualPaddingX)}"
+              aria-label="Horizontal padding in rem"
+            />
+          </label>
+        </div>
+      </div>
       
       <div class="control-group">
         <label class="control-label">Uneven Slice Handling</label>
@@ -159,6 +188,42 @@ export class ControlPanel {
             this.setColor(color);
             this.emitChange();
         });
+
+        // Manual padding inputs
+        const paddingInputs = this.element.querySelectorAll(
+            'input[name="manualPaddingX"], input[name="manualPaddingY"]',
+        );
+        paddingInputs.forEach((input) => {
+            input.addEventListener("input", (e) => {
+                const target = e.target as HTMLInputElement;
+                const value = Math.max(
+                    0,
+                    Math.round(Number(target.value) || 0),
+                );
+                target.value = value.toString();
+                if (target.name === "manualPaddingX") {
+                    this.config.manualPaddingX = this.convertRemToPixels(value);
+                } else if (target.name === "manualPaddingY") {
+                    this.config.manualPaddingY = this.convertRemToPixels(value);
+                }
+                this.updateColorPickerVisibility();
+                this.emitChange();
+            });
+        });
+    }
+
+    private convertRemToPixels(rem: number): number {
+        return (
+            rem *
+            parseFloat(getComputedStyle(document.documentElement).fontSize)
+        );
+    }
+
+    private convertPixelsToRem(pixels: number): number {
+        return (
+            pixels /
+            parseFloat(getComputedStyle(document.documentElement).fontSize)
+        );
     }
 
     private setColor(color: string): void {
@@ -182,8 +247,12 @@ export class ControlPanel {
         const colorGroup = this.element.querySelector(
             ".color-picker-group",
         ) as HTMLElement;
+        const hasManualPadding =
+            this.config.manualPaddingX > 0 || this.config.manualPaddingY > 0;
         colorGroup.style.display =
-            this.config.unevenHandling === "pad" ? "" : "none";
+            this.config.unevenHandling === "pad" || hasManualPadding
+                ? ""
+                : "none";
     }
 
     private emitChange(): void {

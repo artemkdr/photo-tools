@@ -15,8 +15,10 @@ export function sliceImage(
     const { aspectRatio, unevenHandling, paddingColor } = config;
     const targetDimensions = INSTAGRAM_DIMENSIONS[aspectRatio];
 
-    const imageWidth = image.naturalWidth;
-    const imageHeight = image.naturalHeight;
+    const sourceCanvas = buildSourceCanvas(config, image);
+
+    const imageWidth = sourceCanvas.width;
+    const imageHeight = sourceCanvas.height;
 
     const conversionRatio = targetDimensions.height / imageHeight;
 
@@ -34,7 +36,7 @@ export function sliceImage(
     // If padding is requested, pad the entire image left/right so all slices align seamlessly.
     // If cropping is requested, crop the whole image to the nearest slice multiple before slicing.
     const needsAdjustment = normalizedWidth % sliceWidth !== 0;
-    let sliceSource: CanvasImageSource = image;
+    let sliceSource: CanvasImageSource = sourceCanvas;
 
     if (needsAdjustment) {
         if (unevenHandling === "pad") {
@@ -54,7 +56,7 @@ export function sliceImage(
             ctx.fillRect(0, 0, paddedWidth, imageHeight);
             const offsetX = (paddedWidth - imageWidth) / 2;
             // center the image
-            ctx.drawImage(image, offsetX, 0, imageWidth, imageHeight);
+            ctx.drawImage(sourceCanvas, offsetX, 0, imageWidth, imageHeight);
 
             sliceSource = paddedCanvas;
             lastSliceAdjusted = true;
@@ -81,7 +83,7 @@ export function sliceImage(
 
             // Center-crop the whole image horizontally and vertically
             ctx.drawImage(
-                image,
+                sourceCanvas,
                 optimalCropping.x,
                 optimalCropping.y,
                 optimalCropping.cropWidth,
@@ -120,6 +122,38 @@ export function sliceImage(
         originalHeight: imageHeight,
         lastSliceAdjusted,
     };
+}
+
+function buildSourceCanvas(
+    config: SliceConfig,
+    image: HTMLImageElement,
+): HTMLCanvasElement {
+    const { manualPaddingX, manualPaddingY } = config;
+
+    // add one at each side
+    const paddingX = Math.max(0, manualPaddingX) * 2;
+    const paddingY = Math.max(0, manualPaddingY) * 2;
+
+    const paddedWidth = image.naturalWidth + paddingX;
+    const paddedHeight = image.naturalHeight + paddingY;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = paddedWidth;
+    canvas.height = paddedHeight;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+        throw new Error("Failed to get 2D context");
+    }
+
+    // Fill background with padding color, then center the original image
+    ctx.clearRect(0, 0, paddedWidth, paddedHeight);
+    ctx.fillStyle = config.paddingColor;
+    ctx.fillRect(0, 0, paddedWidth, paddedHeight);
+    // Draw the original image centered with padding
+    ctx.drawImage(image, manualPaddingX, manualPaddingY);
+
+    return canvas;
 }
 
 /**

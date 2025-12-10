@@ -21,6 +21,8 @@ class App {
         aspectRatio: "1:1",
         unevenHandling: "pad",
         paddingColor: "#ffffff",
+        manualPaddingX: 0,
+        manualPaddingY: 0,
     };
 
     constructor() {
@@ -158,7 +160,7 @@ class App {
         const result = sliceImage(this.currentImage, this.config);
 
         // Update preview
-        this.slicePreview.updateSlices(result.slices, result.lastSliceAdjusted);
+        this.slicePreview.updateSlices(result.slices);
 
         // Update download panel
         const baseName = generateBaseName(this.currentFile.name);

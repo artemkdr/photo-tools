@@ -23,6 +23,10 @@ export interface SliceConfig {
     unevenHandling: UnevenHandling;
     /** Padding color (hex) when unevenHandling is 'pad' */
     paddingColor: string;
+    /** Optional manual horizontal padding (in pixels) to add before slicing */
+    manualPaddingX: number;
+    /** Optional manual vertical padding (in pixels) to add before slicing */
+    manualPaddingY: number;
 }
 
 /**

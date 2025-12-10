@@ -28,10 +28,7 @@ export class SlicePreview {
     /**
      * Update the preview with new slices
      */
-    public updateSlices(
-        slices: HTMLCanvasElement[],
-        lastSliceAdjusted: boolean,
-    ): void {
+    public updateSlices(slices: HTMLCanvasElement[]): void {
         this.slices = slices;
         this.previewContainer.innerHTML = "";
 
@@ -58,10 +55,9 @@ export class SlicePreview {
                 previewCanvas.height,
             );
 
-            const isLast = index === slices.length - 1;
             const label = document.createElement("span");
             label.className = "preview-label";
-            label.textContent = `${index + 1}${isLast && lastSliceAdjusted ? " (adjusted)" : ""}`;
+            label.textContent = `${index + 1}`;
 
             wrapper.appendChild(previewCanvas);
             wrapper.appendChild(label);
