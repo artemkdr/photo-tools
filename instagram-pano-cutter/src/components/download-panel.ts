@@ -135,7 +135,7 @@ export class DownloadPanel {
             const btn = document.createElement("button");
             btn.type = "button";
             btn.className = "btn btn-secondary download-single-btn";
-            btn.textContent = `Slide ${index + 1}`;
+            btn.textContent = `Download slide ${index + 1}`;
             btn.addEventListener("click", () =>
                 this.handleDownloadSingle(index),
             );

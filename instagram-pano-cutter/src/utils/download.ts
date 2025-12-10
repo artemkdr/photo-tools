@@ -38,8 +38,8 @@ export function downloadSlice(
     index: number,
     baseName: string = "slide",
 ): Promise<void> {
-    const filename = `${baseName}-${String(index + 1).padStart(2, "0")}.png`;
-    return downloadCanvas(canvas, filename);
+    const filename = `${baseName}-${String(index + 1).padStart(2, "0")}.jpg`;
+    return downloadCanvas(canvas, filename, "image/jpeg");
 }
 
 /**

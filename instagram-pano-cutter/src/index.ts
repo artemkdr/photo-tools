@@ -11,7 +11,6 @@ import { ThemeToggle } from "./components/theme-toggle";
  * Main application class
  */
 class App {
-    private imageUploader!: ImageUploader;
     private slicePreview!: SlicePreview;
     private downloadPanel!: DownloadPanel;
 
@@ -40,11 +39,8 @@ class App {
         new ThemeToggle(themeContainer, this.handleThemeChange.bind(this));
 
         // Initialize uploader
-        const uploaderContainer = document.getElementById("uploader-container");
-        if (!uploaderContainer) {
-            throw new Error("Uploader container not found");
-        }
-        this.imageUploader = new ImageUploader(
+        const uploaderContainer = this.getUploadContainer();
+        new ImageUploader(
             uploaderContainer,
             this.handleImageLoad.bind(this),
             this.handleError.bind(this),
@@ -78,42 +74,14 @@ class App {
             throw new Error("Download panel container not found");
         }
         this.downloadPanel = new DownloadPanel(downloadContainer);
-
-        // Create image info container
-        this.createImageInfoContainer();
-
-        // Set initial visibility
-        this.updateVisibility();
     }
 
-    private createImageInfoContainer(): void {
-        const container = document.getElementById("image-info-container");
+    private getUploadContainer(): HTMLElement {
+        const container = document.getElementById("uploader-container");
         if (!container) {
-            throw new Error("Image info container not found");
+            throw new Error("Uploader container not found");
         }
-        container.innerHTML = `
-      <div class="image-info" style="display: none;">
-        <h3 class="image-info-title">Image Info</h3>
-        <div class="image-info-grid">
-          <div class="image-info-item">
-            <span class="image-info-label">Dimensions</span>
-            <span class="image-info-value" id="info-dimensions">-</span>
-          </div>
-          <div class="image-info-item">
-            <span class="image-info-label">Slices</span>
-            <span class="image-info-value" id="info-slices">-</span>
-          </div>
-        </div>
-        <button type="button" class="btn btn-secondary reset-btn" id="reset-btn">
-          Choose Another Image
-        </button>
-      </div>
-    `;
-
-        // Bind reset button
-        document.getElementById("reset-btn")?.addEventListener("click", () => {
-            this.reset();
-        });
+        return container;
     }
 
     private handleImageLoad(image: HTMLImageElement, file: File): void {
@@ -121,18 +89,7 @@ class App {
         this.currentFile = file;
 
         // Process and update info display
-        const result = this.processImage() || {
-            slices: [],
-            sliceCount: 0,
-            sliceWidth: 0,
-            originalWidth: 0,
-            originalHeight: 0,
-            lastSliceAdjusted: false,
-        };
-        this.updateImageInfo(result);
-
-        // Update visibility
-        this.updateVisibility();
+        this.processImage();
     }
 
     private handleConfigChange(config: SliceConfig): void {
@@ -173,46 +130,6 @@ class App {
         }
 
         return result;
-    }
-
-    private updateImageInfo(result: SliceResult): void {
-        if (!this.currentImage) return;
-
-        const dimensionsEl = document.getElementById("info-dimensions");
-        const slicesEl = document.getElementById("info-slices");
-
-        if (dimensionsEl) {
-            dimensionsEl.textContent = `${result.originalWidth} × ${result.originalHeight}`;
-        }
-        if (slicesEl) {
-            slicesEl.textContent = result.sliceCount.toString();
-        }
-    }
-
-    private updateVisibility(): void {
-        const hasImage = this.currentImage !== null;
-
-        // Show/hide uploader
-        this.imageUploader.setVisible(!hasImage);
-
-        // Show/hide image info
-        const infoEl = document.querySelector(".image-info") as HTMLElement;
-        if (infoEl) {
-            infoEl.style.display = hasImage ? "" : "none";
-        }
-    }
-
-    private reset(): void {
-        this.currentImage = null;
-        this.currentFile = null;
-
-        // Reset components
-        this.imageUploader.reset();
-        this.slicePreview.clear();
-        this.downloadPanel.clear();
-
-        // Update visibility
-        this.updateVisibility();
     }
 }
 
