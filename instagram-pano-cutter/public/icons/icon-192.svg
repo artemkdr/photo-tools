@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="32" fill="#0071e3"/>
+  <g fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Scissors icon representing cutting -->
+    <circle cx="60" cy="80" r="16"/>
+    <circle cx="60" cy="112" r="16"/>
+    <line x1="76" y1="80" x2="132" y2="112"/>
+    <line x1="76" y1="112" x2="132" y2="80"/>
+    <!-- Image/slides representation -->
+    <rect x="100" y="56" width="40" height="40" rx="4"/>
+    <rect x="108" y="64" width="40" height="40" rx="4"/>
+    <rect x="116" y="72" width="40" height="40" rx="4"/>
+  </g>
+</svg>

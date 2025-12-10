@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Cut horizontal panorama photos into Instagram carousel slides. All processing happens locally in your browser.">
+  <meta name="theme-color" content="#0071e3" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0a84ff" media="(prefers-color-scheme: dark)">
+  
+  <title>Instagram Pano Cutter</title>
+  
+  <!-- PWA manifest -->
+  <link rel="manifest" href="/manifest.json">
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="/icons/icon-192.svg">
+  <link rel="apple-touch-icon" href="/icons/icon-192.svg">
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="/styles/main.css">
+</head>
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <div class="app-branding">
+        <h1 class="app-title">Instagram Pano Cutter</h1>
+        <p class="app-subtitle">Cut panorama photos into carousel slides</p>
+      </div>
+      <div id="theme-toggle-container"></div>
+    </header>
+    
+    <main class="app-main">
+      <aside class="sidebar">
+        <div id="uploader-container"></div>
+        <div id="image-info-container"></div>
+        <div id="control-panel-container"></div>
+        <div id="download-panel-container"></div>
+      </aside>
+      
+      <section class="content">
+        <div id="preview-container"></div>
+      </section>
+    </main>
+    
+    <footer class="app-footer">
+      <p class="footer-text">All processing happens locally. Your photos never leave your device.</p>
+    </footer>
+  </div>
+  
+  <!-- App script -->
+  <script type="module" src="/index.js"></script>
+  
+  <!-- Register service worker for PWA -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(registration => {
+            console.log('SW registered:', registration.scope);
+          })
+          .catch(error => {
+            console.log('SW registration failed:', error);
+          });
+      });
+    }
+  </script>
+</body>
+</html>
