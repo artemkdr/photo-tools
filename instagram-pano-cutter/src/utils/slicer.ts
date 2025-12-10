@@ -1,214 +1,180 @@
-import { 
-  type SliceConfig, 
-  type SliceResult, 
-  type AspectRatio,
-  INSTAGRAM_DIMENSIONS 
-} from '../types';
-
-/**
- * Calculate the number of slices needed for an image
- */
-export function calculateSliceCount(
-  imageWidth: number,
-  imageHeight: number,
-  aspectRatio: AspectRatio
-): number {
-  const targetDimensions = INSTAGRAM_DIMENSIONS[aspectRatio];
-  const targetRatio = targetDimensions.width / targetDimensions.height;
-  
-  // Calculate width of each slice based on image height and target ratio
-  const sliceWidth = imageHeight * targetRatio;
-  
-  // Calculate how many slices we need
-  return Math.ceil(imageWidth / sliceWidth);
-}
+import {
+    type SliceConfig,
+    type SliceResult,
+    INSTAGRAM_DIMENSIONS,
+} from "../types";
+import { getOptimalCropping } from "./get-optimal-cropping";
 
 /**
  * Slice an image into Instagram-ready carousel slides
  */
 export function sliceImage(
-  image: HTMLImageElement,
-  config: SliceConfig
+    image: HTMLImageElement,
+    config: SliceConfig,
 ): SliceResult {
-  const { aspectRatio, unevenHandling, paddingColor } = config;
-  const targetDimensions = INSTAGRAM_DIMENSIONS[aspectRatio];
-  const targetRatio = targetDimensions.width / targetDimensions.height;
-  
-  const imageWidth = image.naturalWidth;
-  const imageHeight = image.naturalHeight;
-  
-  // Calculate slice width based on image height to maintain aspect ratio
-  const sliceWidth = imageHeight * targetRatio;
-  const sliceCount = Math.ceil(imageWidth / sliceWidth);
-  
-  const slices: HTMLCanvasElement[] = [];
-  let lastSliceAdjusted = false;
-  
-  for (let i = 0; i < sliceCount; i++) {
-    const sourceX = i * sliceWidth;
-    const remainingWidth = imageWidth - sourceX;
-    
-    // Check if this is the last slice and it's smaller than expected
-    const isLastSlice = i === sliceCount - 1;
-    const isUneven = remainingWidth < sliceWidth;
-    
-    if (isLastSlice && isUneven) {
-      lastSliceAdjusted = true;
-      
-      if (unevenHandling === 'crop') {
-        // Crop: center-crop from the available content
-        slices.push(createCroppedSlice(image, sourceX, remainingWidth, imageHeight, targetDimensions));
-      } else {
-        // Pad: add equal padding on both sides
-        slices.push(createPaddedSlice(image, sourceX, remainingWidth, imageHeight, targetDimensions, paddingColor));
-      }
-    } else {
-      // Regular full slice
-      slices.push(createFullSlice(image, sourceX, sliceWidth, imageHeight, targetDimensions));
+    const { aspectRatio, unevenHandling, paddingColor } = config;
+    const targetDimensions = INSTAGRAM_DIMENSIONS[aspectRatio];
+
+    const imageWidth = image.naturalWidth;
+    const imageHeight = image.naturalHeight;
+
+    const conversionRatio = targetDimensions.height / imageHeight;
+
+    // we normalize the image width to the target height to calculate number of slices
+    const normalizedWidth = imageWidth * conversionRatio;
+
+    // effective slice width of the image
+    let sliceWidth = targetDimensions.width / conversionRatio;
+    let sliceHeight = imageHeight;
+    let sliceCount = Math.ceil(imageWidth / sliceWidth);
+
+    const slices: HTMLCanvasElement[] = [];
+    let lastSliceAdjusted = false;
+
+    // If padding is requested, pad the entire image left/right so all slices align seamlessly.
+    // If cropping is requested, crop the whole image to the nearest slice multiple before slicing.
+    const needsAdjustment = normalizedWidth % sliceWidth !== 0;
+    let sliceSource: CanvasImageSource = image;
+
+    if (needsAdjustment) {
+        if (unevenHandling === "pad") {
+            // padded real width of the whole image
+            const paddedWidth = sliceCount * sliceWidth;
+            const paddedCanvas = document.createElement("canvas");
+            paddedCanvas.width = paddedWidth;
+            paddedCanvas.height = imageHeight;
+            const ctx = paddedCanvas.getContext("2d");
+
+            if (!ctx) {
+                throw new Error("Failed to get 2D context");
+            }
+
+            // Fill background with padding color, then center the original image
+            ctx.fillStyle = paddingColor;
+            ctx.fillRect(0, 0, paddedWidth, imageHeight);
+            const offsetX = (paddedWidth - imageWidth) / 2;
+            // center the image
+            ctx.drawImage(image, offsetX, 0, imageWidth, imageHeight);
+
+            sliceSource = paddedCanvas;
+            lastSliceAdjusted = true;
+        } else if (unevenHandling === "crop") {
+            // try to find optimal number of slices
+            // objectif: we have to crop as less as possible
+            // so we have to find an ideal width/height crop amount to fit into slices with minimal cropping
+            const optimalCropping = getOptimalCropping(
+                imageWidth,
+                imageHeight,
+                targetDimensions.width / targetDimensions.height,
+            );
+            sliceCount = optimalCropping.sliceCount;
+            sliceWidth = optimalCropping.cropWidth / sliceCount;
+            sliceHeight = optimalCropping.cropHeight;
+
+            const cropCanvas = document.createElement("canvas");
+            cropCanvas.width = optimalCropping.cropWidth;
+            cropCanvas.height = optimalCropping.cropHeight;
+            const ctx = cropCanvas.getContext("2d");
+            if (!ctx) {
+                throw new Error("Failed to get 2D context");
+            }
+
+            // Center-crop the whole image horizontally and vertically
+            ctx.drawImage(
+                image,
+                optimalCropping.x,
+                optimalCropping.y,
+                optimalCropping.cropWidth,
+                optimalCropping.cropHeight,
+                0,
+                0,
+                optimalCropping.cropWidth,
+                optimalCropping.cropHeight,
+            );
+
+            sliceSource = cropCanvas;
+            lastSliceAdjusted = imageWidth !== optimalCropping.cropWidth;
+        }
     }
-  }
-  
-  return {
-    slices,
-    count: slices.length,
-    lastSliceAdjusted,
-  };
+
+    for (let i = 0; i < sliceCount; i++) {
+        const sourceX = i * sliceWidth;
+        const sourceY = 0;
+        slices.push(
+            createFullSlice(
+                sliceSource,
+                sourceX,
+                sourceY,
+                sliceWidth,
+                sliceHeight,
+                targetDimensions,
+            ),
+        );
+    }
+
+    return {
+        slices,
+        sliceCount: slices.length,
+        sliceWidth,
+        originalWidth: imageWidth,
+        originalHeight: imageHeight,
+        lastSliceAdjusted,
+    };
 }
 
 /**
  * Create a full slice (no adjustments needed)
  */
 function createFullSlice(
-  image: HTMLImageElement,
-  sourceX: number,
-  sourceWidth: number,
-  sourceHeight: number,
-  targetDimensions: { width: number; height: number }
+    image: CanvasImageSource,
+    sourceX: number,
+    sourceY: number,
+    sourceWidth: number,
+    sourceHeight: number,
+    targetDimensions: { width: number; height: number },
 ): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
-  canvas.width = targetDimensions.width;
-  canvas.height = targetDimensions.height;
-  
-  const ctx = canvas.getContext('2d')!;
-  
-  ctx.drawImage(
-    image,
-    sourceX, 0, sourceWidth, sourceHeight,  // Source rectangle
-    0, 0, targetDimensions.width, targetDimensions.height  // Destination rectangle
-  );
-  
-  return canvas;
-}
+    const canvas = document.createElement("canvas");
+    canvas.width = targetDimensions.width;
+    canvas.height = targetDimensions.height;
 
-/**
- * Create a cropped slice (center-crop for uneven last slice)
- */
-function createCroppedSlice(
-  image: HTMLImageElement,
-  sourceX: number,
-  availableWidth: number,
-  sourceHeight: number,
-  targetDimensions: { width: number; height: number }
-): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
-  canvas.width = targetDimensions.width;
-  canvas.height = targetDimensions.height;
-  
-  const ctx = canvas.getContext('2d')!;
-  const targetRatio = targetDimensions.width / targetDimensions.height;
-  
-  // Calculate the portion of the image we can use
-  // We need to crop height to match the available width's aspect ratio
-  const croppedHeight = availableWidth / targetRatio;
-  const heightOffset = (sourceHeight - croppedHeight) / 2;
-  
-  ctx.drawImage(
-    image,
-    sourceX, heightOffset, availableWidth, croppedHeight,
-    0, 0, targetDimensions.width, targetDimensions.height
-  );
-  
-  return canvas;
-}
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+        throw new Error("Failed to get 2D context");
+    }
 
-/**
- * Create a padded slice (equal padding on both sides for uneven last slice)
- */
-function createPaddedSlice(
-  image: HTMLImageElement,
-  sourceX: number,
-  availableWidth: number,
-  sourceHeight: number,
-  targetDimensions: { width: number; height: number },
-  paddingColor: string
-): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
-  canvas.width = targetDimensions.width;
-  canvas.height = targetDimensions.height;
-  
-  const ctx = canvas.getContext('2d')!;
-  const targetRatio = targetDimensions.width / targetDimensions.height;
-  const expectedSliceWidth = sourceHeight * targetRatio;
-  
-  // Fill with padding color first
-  ctx.fillStyle = paddingColor;
-  ctx.fillRect(0, 0, targetDimensions.width, targetDimensions.height);
-  
-  // Calculate the scaled dimensions for the available content
-  const scale = targetDimensions.height / sourceHeight;
-  const scaledContentWidth = availableWidth * scale;
-  
-  // Center the content horizontally (equal padding on both sides)
-  const offsetX = (targetDimensions.width - scaledContentWidth) / 2;
-  
-  ctx.drawImage(
-    image,
-    sourceX, 0, availableWidth, sourceHeight,
-    offsetX, 0, scaledContentWidth, targetDimensions.height
-  );
-  
-  return canvas;
+    ctx.drawImage(
+        image,
+        sourceX,
+        sourceY,
+        sourceWidth,
+        sourceHeight, // Source rectangle
+        0,
+        0,
+        targetDimensions.width,
+        targetDimensions.height, // Destination rectangle
+    );
+
+    return canvas;
 }
 
 /**
  * Load an image from a File object
  */
 export function loadImageFromFile(file: File): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      resolve(img);
-    };
-    
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error('Failed to load image'));
-    };
-    
-    img.src = url;
-  });
-}
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
 
-/**
- * Get image info for display
- */
-export function getImageInfo(image: HTMLImageElement, aspectRatio: AspectRatio): {
-  originalWidth: number;
-  originalHeight: number;
-  sliceCount: number;
-  sliceWidth: number;
-} {
-  const sliceCount = calculateSliceCount(image.naturalWidth, image.naturalHeight, aspectRatio);
-  const targetDimensions = INSTAGRAM_DIMENSIONS[aspectRatio];
-  const sliceWidth = image.naturalHeight * (targetDimensions.width / targetDimensions.height);
-  
-  return {
-    originalWidth: image.naturalWidth,
-    originalHeight: image.naturalHeight,
-    sliceCount,
-    sliceWidth: Math.round(sliceWidth),
-  };
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+            resolve(img);
+        };
+
+        img.onerror = () => {
+            URL.revokeObjectURL(url);
+            reject(new Error("Failed to load image"));
+        };
+
+        img.src = url;
+    });
 }

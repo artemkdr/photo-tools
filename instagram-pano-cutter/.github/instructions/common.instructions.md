@@ -1,3 +1,7 @@
+---
+applyTo: "**/*.*"
+---
+
 # Instagram Pano Cutter - Copilot Instructions
 
 ## Project Overview

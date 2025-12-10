@@ -1,15 +1,21 @@
 {
-  "name": "instagram-pano-cutter",
-  "version": "1.0.0",
-  "type": "module",
-  "description": "Cut horizontal photos into Instagram carousel slides",
-  "scripts": {
-    "dev": "bun run serve.ts",
-    "build": "bun build src/index.ts --outdir=dist --minify",
-    "serve": "bun run serve.ts"
-  },
-  "devDependencies": {
-    "@types/bun": "^1.1.0",
-    "typescript": "^5.3.0"
-  }
+    "name": "instagram-pano-cutter",
+    "version": "1.0.0",
+    "type": "module",
+    "description": "Cut horizontal photos into Instagram carousel slides",
+    "scripts": {
+        "dev": "vite --force",
+        "build": "tsc && vite build",
+        "preview": "vite preview",
+        "lint": "npx biome format && npx biome lint",
+        "lint:fix": "npx biome format --write && npx biome lint --write",
+        "typecheck": "npx tsc --noEmit",
+        "precommit": "npm run typecheck && npm run lint:fix"
+    },
+    "devDependencies": {
+        "@artemkdr/biome-base": "^0.0.3",
+        "@biomejs/biome": "^2.3.8",
+        "typescript": "^5.9.3",
+        "vite": "^7.2.7"
+    }
 }

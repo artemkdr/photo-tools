@@ -1,33 +1,30 @@
-import type { Theme } from '../types';
+import type { Theme } from "../types";
 
 export type ThemeChangeCallback = (theme: Theme) => void;
 
-const STORAGE_KEY = 'instagram-pano-cutter-theme';
+const STORAGE_KEY = "instagram-pano-cutter-theme";
 
 /**
  * Theme toggle component supporting light/dark/auto modes
  */
 export class ThemeToggle {
-  private element: HTMLElement;
-  private currentTheme: Theme;
-  private onChange: ThemeChangeCallback;
-  
-  constructor(
-    container: HTMLElement,
-    onChange: ThemeChangeCallback
-  ) {
-    this.onChange = onChange;
-    this.currentTheme = this.loadTheme();
-    this.element = this.render();
-    container.appendChild(this.element);
-    this.bindEvents();
-    this.applyTheme(this.currentTheme);
-  }
-  
-  private render(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'theme-toggle';
-    el.innerHTML = `
+    private element: HTMLElement;
+    private currentTheme: Theme;
+    private onChange: ThemeChangeCallback;
+
+    constructor(container: HTMLElement, onChange: ThemeChangeCallback) {
+        this.onChange = onChange;
+        this.currentTheme = this.loadTheme();
+        this.element = this.render();
+        container.appendChild(this.element);
+        this.bindEvents();
+        this.applyTheme(this.currentTheme);
+    }
+
+    private render(): HTMLElement {
+        const el = document.createElement("div");
+        el.className = "theme-toggle";
+        el.innerHTML = `
       <button 
         type="button" 
         class="theme-btn" 
@@ -50,66 +47,72 @@ export class ThemeToggle {
         </svg>
       </button>
     `;
-    return el;
-  }
-  
-  private bindEvents(): void {
-    const btn = this.element.querySelector('.theme-btn')!;
-    btn.addEventListener('click', () => this.cycleTheme());
-  }
-  
-  private cycleTheme(): void {
-    const themes: Theme[] = ['light', 'dark', 'auto'];
-    const currentIndex = themes.indexOf(this.currentTheme);
-    const nextIndex = (currentIndex + 1) % themes.length;
-    this.setTheme(themes[nextIndex]);
-  }
-  
-  private setTheme(theme: Theme): void {
-    this.currentTheme = theme;
-    this.saveTheme(theme);
-    this.applyTheme(theme);
-    this.onChange(theme);
-  }
-  
-  private applyTheme(theme: Theme): void {
-    const root = document.documentElement;
-    
-    if (theme === 'auto') {
-      root.removeAttribute('data-theme');
-    } else {
-      root.setAttribute('data-theme', theme);
+        return el;
     }
-    
-    // Update button state
-    const btn = this.element.querySelector('.theme-btn')!;
-    btn.setAttribute('data-theme', theme);
-    
-    // Update title
-    const titles: Record<Theme, string> = {
-      light: 'Switch to dark mode',
-      dark: 'Switch to auto mode',
-      auto: 'Switch to light mode',
-    };
-    btn.setAttribute('title', titles[theme]);
-  }
-  
-  private loadTheme(): Theme {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === 'light' || stored === 'dark' || stored === 'auto') {
-      return stored;
+
+    private bindEvents(): void {
+        const btn = this.element.querySelector(".theme-btn");
+        if (!btn) {
+            throw new Error("Theme button not found");
+        }
+        btn.addEventListener("click", () => this.cycleTheme());
     }
-    return 'auto';
-  }
-  
-  private saveTheme(theme: Theme): void {
-    localStorage.setItem(STORAGE_KEY, theme);
-  }
-  
-  /**
-   * Get current theme
-   */
-  public getTheme(): Theme {
-    return this.currentTheme;
-  }
+
+    private cycleTheme(): void {
+        const themes: Theme[] = ["light", "dark", "auto"];
+        const currentIndex = themes.indexOf(this.currentTheme);
+        const nextIndex = (currentIndex + 1) % themes.length;
+        this.setTheme(themes[nextIndex]);
+    }
+
+    private setTheme(theme: Theme): void {
+        this.currentTheme = theme;
+        this.saveTheme(theme);
+        this.applyTheme(theme);
+        this.onChange(theme);
+    }
+
+    private applyTheme(theme: Theme): void {
+        const root = document.documentElement;
+
+        if (theme === "auto") {
+            root.removeAttribute("data-theme");
+        } else {
+            root.setAttribute("data-theme", theme);
+        }
+
+        // Update button state
+        const btn = this.element.querySelector(".theme-btn");
+        if (!btn) {
+            throw new Error("Theme button not found");
+        }
+        btn.setAttribute("data-theme", theme);
+
+        // Update title
+        const titles: Record<Theme, string> = {
+            light: "Switch to dark mode",
+            dark: "Switch to auto mode",
+            auto: "Switch to light mode",
+        };
+        btn.setAttribute("title", titles[theme]);
+    }
+
+    private loadTheme(): Theme {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored === "light" || stored === "dark" || stored === "auto") {
+            return stored;
+        }
+        return "auto";
+    }
+
+    private saveTheme(theme: Theme): void {
+        localStorage.setItem(STORAGE_KEY, theme);
+    }
+
+    /**
+     * Get current theme
+     */
+    public getTheme(): Theme {
+        return this.currentTheme;
+    }
 }

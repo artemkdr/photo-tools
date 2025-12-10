@@ -1,4 +1,4 @@
-import { downloadSlice, downloadAllSlices } from '../utils/download';
+import { downloadSlice, downloadAllSlices } from "../utils/download";
 
 export type DownloadCallback = () => void;
 
@@ -6,22 +6,22 @@ export type DownloadCallback = () => void;
  * Download panel component with individual and batch download options
  */
 export class DownloadPanel {
-  private element: HTMLElement;
-  private slices: HTMLCanvasElement[] = [];
-  private baseName: string = 'slide';
-  private isDownloading: boolean = false;
-  
-  constructor(container: HTMLElement) {
-    this.element = this.render();
-    container.appendChild(this.element);
-    this.bindEvents();
-    this.updateState();
-  }
-  
-  private render(): HTMLElement {
-    const el = document.createElement('div');
-    el.className = 'download-panel';
-    el.innerHTML = `
+    private element: HTMLElement;
+    private slices: HTMLCanvasElement[] = [];
+    private baseName: string = "slide";
+    private isDownloading: boolean = false;
+
+    constructor(container: HTMLElement) {
+        this.element = this.render();
+        container.appendChild(this.element);
+        this.bindEvents();
+        this.updateState();
+    }
+
+    private render(): HTMLElement {
+        const el = document.createElement("div");
+        el.className = "download-panel";
+        el.innerHTML = `
       <div class="download-header">
         <h2 class="download-title">Download</h2>
       </div>
@@ -46,99 +46,119 @@ export class DownloadPanel {
         <span class="progress-text"></span>
       </div>
     `;
-    return el;
-  }
-  
-  private bindEvents(): void {
-    const downloadAllBtn = this.element.querySelector('.download-all-btn')!;
-    downloadAllBtn.addEventListener('click', () => this.handleDownloadAll());
-  }
-  
-  private async handleDownloadAll(): Promise<void> {
-    if (this.isDownloading || this.slices.length === 0) return;
-    
-    this.isDownloading = true;
-    this.updateState();
-    this.showProgress('Downloading...');
-    
-    try {
-      await downloadAllSlices(this.slices, this.baseName);
-      this.showProgress('Download complete!');
-      setTimeout(() => this.hideProgress(), 2000);
-    } catch (error) {
-      this.showProgress('Download failed. Please try again.');
-      console.error('Download error:', error);
-    } finally {
-      this.isDownloading = false;
-      this.updateState();
+        return el;
     }
-  }
-  
-  private async handleDownloadSingle(index: number): Promise<void> {
-    if (this.isDownloading) return;
-    
-    try {
-      await downloadSlice(this.slices[index], index, this.baseName);
-    } catch (error) {
-      console.error('Download error:', error);
+
+    private bindEvents(): void {
+        const downloadAllBtn = this.element.querySelector(".download-all-btn");
+        if (downloadAllBtn) {
+            downloadAllBtn.addEventListener("click", () =>
+                this.handleDownloadAll(),
+            );
+        }
     }
-  }
-  
-  private updateState(): void {
-    const hasSlices = this.slices.length > 0;
-    const downloadAllBtn = this.element.querySelector('.download-all-btn') as HTMLButtonElement;
-    const individualSection = this.element.querySelector('.download-individual') as HTMLElement;
-    
-    downloadAllBtn.disabled = !hasSlices || this.isDownloading;
-    individualSection.style.display = hasSlices ? '' : 'none';
-  }
-  
-  private showProgress(text: string): void {
-    const progressEl = this.element.querySelector('.download-progress')!;
-    const textEl = progressEl.querySelector('.progress-text')!;
-    textEl.textContent = text;
-    progressEl.classList.add('visible');
-  }
-  
-  private hideProgress(): void {
-    const progressEl = this.element.querySelector('.download-progress')!;
-    progressEl.classList.remove('visible');
-  }
-  
-  /**
-   * Update the panel with new slices
-   */
-  public setSlices(slices: HTMLCanvasElement[], baseName: string): void {
-    this.slices = slices;
-    this.baseName = baseName;
-    
-    // Rebuild individual download buttons
-    const buttonsContainer = this.element.querySelector('.download-buttons')!;
-    buttonsContainer.innerHTML = '';
-    
-    slices.forEach((_, index) => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'btn btn-secondary download-single-btn';
-      btn.textContent = `Slide ${index + 1}`;
-      btn.addEventListener('click', () => this.handleDownloadSingle(index));
-      buttonsContainer.appendChild(btn);
-    });
-    
-    this.updateState();
-  }
-  
-  /**
-   * Clear the panel
-   */
-  public clear(): void {
-    this.slices = [];
-    this.baseName = 'slide';
-    
-    const buttonsContainer = this.element.querySelector('.download-buttons')!;
-    buttonsContainer.innerHTML = '';
-    
-    this.hideProgress();
-    this.updateState();
-  }
+
+    private async handleDownloadAll(): Promise<void> {
+        if (this.isDownloading || this.slices.length === 0) return;
+
+        this.isDownloading = true;
+        this.updateState();
+        this.showProgress("Downloading...");
+
+        try {
+            await downloadAllSlices(this.slices, this.baseName);
+            this.showProgress("Download complete!");
+            setTimeout(() => this.hideProgress(), 2000);
+        } catch (error) {
+            this.showProgress("Download failed. Please try again.");
+            console.error("Download error:", error);
+        } finally {
+            this.isDownloading = false;
+            this.updateState();
+        }
+    }
+
+    private async handleDownloadSingle(index: number): Promise<void> {
+        if (this.isDownloading) return;
+
+        try {
+            await downloadSlice(this.slices[index], index, this.baseName);
+        } catch (error) {
+            console.error("Download error:", error);
+        }
+    }
+
+    private updateState(): void {
+        const hasSlices = this.slices.length > 0;
+        const downloadAllBtn = this.element.querySelector(
+            ".download-all-btn",
+        ) as HTMLButtonElement;
+        const individualSection = this.element.querySelector(
+            ".download-individual",
+        ) as HTMLElement;
+
+        downloadAllBtn.disabled = !hasSlices || this.isDownloading;
+        individualSection.style.display = hasSlices ? "" : "none";
+    }
+
+    private showProgress(text: string): void {
+        const progressEl = this.element.querySelector(".download-progress");
+        if (progressEl) {
+            const textEl = progressEl.querySelector(".progress-text");
+            if (textEl) {
+                textEl.textContent = text;
+            }
+            progressEl.classList.add("visible");
+        }
+    }
+
+    private hideProgress(): void {
+        const progressEl = this.element.querySelector(".download-progress");
+        if (progressEl) {
+            progressEl.classList.remove("visible");
+        }
+    }
+
+    /**
+     * Update the panel with new slices
+     */
+    public setSlices(slices: HTMLCanvasElement[], baseName: string): void {
+        this.slices = slices;
+        this.baseName = baseName;
+
+        // Rebuild individual download buttons
+        const buttonsContainer =
+            this.element.querySelector(".download-buttons")!;
+        buttonsContainer.innerHTML = "";
+
+        slices.forEach((_, index) => {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "btn btn-secondary download-single-btn";
+            btn.textContent = `Slide ${index + 1}`;
+            btn.addEventListener("click", () =>
+                this.handleDownloadSingle(index),
+            );
+            buttonsContainer.appendChild(btn);
+        });
+
+        this.updateState();
+    }
+
+    /**
+     * Clear the panel
+     */
+    public clear(): void {
+        this.slices = [];
+        this.baseName = "slide";
+
+        const buttonsContainer =
+            this.element.querySelector(".download-buttons");
+        if (buttonsContainer) {
+            buttonsContainer.innerHTML = "";
+        }
+
+        this.hideProgress();
+        this.updateState();
+    }
 }

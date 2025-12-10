@@ -1,0 +1,21 @@
+{
+    "extends": ["@artemkdr/biome-base/base.json"],
+    "formatter": {
+        "indentStyle": "space",
+        "indentWidth": 4
+    },
+    "linter": {
+        "domains": {
+            "project": "recommended"
+        },
+        "rules": {
+            "complexity": {
+                "useLiteralKeys": "off",
+                "noStaticOnlyClass": "off"
+            },
+            "style": {
+                "noNonNullAssertion": "off"
+            }
+        }
+    }
+}
