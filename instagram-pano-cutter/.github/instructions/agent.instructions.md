@@ -1,5 +1,5 @@
 ---
-applyTo: "**/*.*"
+applyTo: "**"
 ---
 
 # Instagram Pano Cutter - Copilot Instructions
