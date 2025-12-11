@@ -1,6 +1,6 @@
 {
     "name": "instagram-pano-cutter",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "type": "module",
     "description": "Cut horizontal photos into Instagram carousel slides",
     "scripts": {
