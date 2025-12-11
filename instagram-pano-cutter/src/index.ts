@@ -1,7 +1,7 @@
 import type { SliceConfig, SliceResult, Theme } from "./types";
 import { sliceImage } from "./utils/slicer";
 import { generateBaseName } from "./utils/download";
-import { ImageUploader } from "./components/image-uploader";
+import { ImageUploader } from "./components/image-uploader/image-uploader";
 import { ControlPanel } from "./components/control-panel";
 import { SlicePreview } from "./components/slice-preview";
 import { DownloadPanel } from "./components/download-panel";

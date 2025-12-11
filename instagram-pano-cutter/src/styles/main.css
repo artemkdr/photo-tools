@@ -54,6 +54,7 @@
     --color-error: #ff453a;
     --color-shadow: rgba(0, 0, 0, 0.3);
     --color-overlay: rgba(0, 0, 0, 0.6);
+    --color-overlay-hard: rgba(150, 150, 150, 0.9);
 }
 
 /* Auto theme (follows system preference) */
@@ -73,6 +74,7 @@
         --color-error: #ff453a;
         --color-shadow: rgba(0, 0, 0, 0.3);
         --color-overlay: rgba(0, 0, 0, 0.6);
+        --color-overlay-hard: rgba(50, 50, 50, 0.9);
     }
 }
 
@@ -351,6 +353,39 @@ body {
 
 .error-message.visible {
     display: block;
+}
+
+/* Loading spinner overlay for uploader */
+.upload-zone.loading {
+    pointer-events: none;
+    position: relative;
+    opacity: 0.7;
+}
+
+.upload-zone .uploader-spinner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-overlay-hard);
+    border-radius: inherit;
+}
+
+.uploader-spinner svg {
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    color: var(--color-accent);
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* ===================================

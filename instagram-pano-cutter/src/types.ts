@@ -68,12 +68,37 @@ export const SUPPORTED_IMAGE_TYPES = [
     "image/webp",
     "image/avif",
     "image/bmp",
+    "image/x-canon-cr2", // Canon RAW
+    "image/tiff", // tiff, dng, nef, nrw, pef...
+    "image/octet-stream", // for some RAW files
+] as const;
+
+/**
+ * Extensions that are TIFF or TIFF-like (including some proprietary whole-slide/imaging formats)
+ * These are often encoded using TIFF containers or are commonly treated as TIFF by decoders
+ */
+export const TIFF_EXTENSIONS = [
+    ".tif",
+    ".tiff",
+    ".ptif",
+    ".btf",
+    ".dng", // Adobe Digital Negative (TIFF-based)
+    ".pef", // Pentax RAW (TIFF-based)
+    ".nef", // Nikon RAW (TIFF-based)
+    ".nrw", // Nikon RAW (TIFF-based)
+    // Extended TIFF formats
+    // Whole-slide / proprietary TIFF-based formats
+    ".svs",
+    ".ndpi",
+    ".mrxs",
+    ".scn",
 ] as const;
 
 /**
  * Supported file extensions
  */
 export const SUPPORTED_EXTENSIONS = [
+    // Common image formats
     ".jpg",
     ".jpeg",
     ".png",
@@ -81,6 +106,12 @@ export const SUPPORTED_EXTENSIONS = [
     ".webp",
     ".avif",
     ".bmp",
+    ".heic",
+    ".heif",
+    ".arw", // Sony RAW (supported by some browsers)
+    ".raw", // Generic RAW
+    // TIFF and TIFF-like formats
+    ...TIFF_EXTENSIONS,
 ] as const;
 
 /**
@@ -89,6 +120,24 @@ export const SUPPORTED_EXTENSIONS = [
 export function isSupportedImageType(type: string): boolean {
     return SUPPORTED_IMAGE_TYPES.includes(
         type as (typeof SUPPORTED_IMAGE_TYPES)[number],
+    );
+}
+
+export function isTiffMimeType(extensionOrMimeType: string): boolean {
+    const ext = extensionOrMimeType.toLowerCase();
+    return (
+        ext === "image/tiff" ||
+        (TIFF_EXTENSIONS as readonly string[]).includes(ext)
+    );
+}
+
+export function isHeicMimeType(extensionOrMimeType: string): boolean {
+    const ext = extensionOrMimeType.toLowerCase();
+    return (
+        ext === "image/heic" ||
+        ext === "image/heif" ||
+        ext === ".heic" ||
+        ext === ".heif"
     );
 }
 
