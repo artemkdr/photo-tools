@@ -192,6 +192,10 @@ body {
         display: contents;
     }
 
+    section.content {
+        max-width: 100%;
+    }
+
     /* Explicit visual order on small screens: uploader -> preview -> control -> download */
     #uploader-container {
         order: 0;
@@ -199,62 +203,11 @@ body {
     #preview-container {
         order: 1;
     }
-    #control-panel-container {
+    #download-panel-container {
         order: 2;
     }
-    #download-panel-container {
+    #control-panel-container {
         order: 3;
-    }
-
-    /* Make preview slices fill the usable viewport width reliably across rotations/tablets.
-       Use calc-based sizing subtracting horizontal app padding so the slice reaches screen edges.
-       Add touch-friendly scrolling and scroll-snap for an Instagram-like swipe experience. */
-    .preview-grid {
-        display: flex;
-        flex-direction: row;
-        gap: var(--spacing-sm);
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-gutter: stable;
-        /* allow the grid to span the viewport so items can snap to edges */
-        width: calc(100dvw - var(--spacing-2xl) - var(--spacing-xl));
-        box-sizing: border-box;
-    }
-
-    .preview-item {
-        /* Compute item width as full dynamic viewport width minus the app horizontal padding.
-           Provide two fallbacks: vw then dvw for browsers that support dvw. */
-        flex: 0 0 auto;
-        padding: 0;
-        box-sizing: border-box;
-        width: calc(100dvw - var(--spacing-2xl) - var(--spacing-xl));
-        max-width: 100dvw;
-    }
-
-    .preview-item canvas {
-        width: 100%;
-        height: auto;
-        display: block;
-        max-width: 100%;
-        background-clip: padding-box;
-    }
-
-    section.content {
-        max-width: 100%;
-    }
-
-    .download-panel {
-        padding: 0;
-    }
-
-    .download-panel .download-individual {
-        display: none;
-    }
-}
-
-@media (max-width: 999px) and (orientation: landscape) {
-    .preview-item {
-        max-width: 100dvh;
     }
 }
 
@@ -636,6 +589,47 @@ body {
     color: var(--color-text-secondary);
 }
 
+@media (max-width: 999px) {
+    /* Make preview slices fill the usable viewport width reliably across rotations/tablets.
+       Use calc-based sizing subtracting horizontal app padding so the slice reaches screen edges.
+       Add touch-friendly scrolling and scroll-snap for an Instagram-like swipe experience. */
+    .preview-grid {
+        display: flex;
+        flex-direction: row;
+        gap: var(--spacing-sm);
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-gutter: stable;
+        /* allow the grid to span the viewport so items can snap to edges */
+        width: calc(100dvw - var(--spacing-2xl) - var(--spacing-xl));
+        box-sizing: border-box;
+    }
+
+    .preview-item {
+        /* Compute item width as full dynamic viewport width minus the app horizontal padding.
+           Provide two fallbacks: vw then dvw for browsers that support dvw. */
+        flex: 0 0 auto;
+        padding: 0;
+        box-sizing: border-box;
+        width: calc(100dvw - var(--spacing-2xl) - var(--spacing-xl));
+        max-width: 100dvw;
+    }
+
+    .preview-item canvas {
+        width: 100%;
+        height: auto;
+        display: block;
+        max-width: 100%;
+        background-clip: padding-box;
+    }
+}
+
+@media (max-width: 999px) and (orientation: landscape) {
+    .preview-item {
+        max-width: 100dvh;
+    }
+}
+
 /* ===================================
    Download Panel Component
    =================================== */
@@ -646,6 +640,16 @@ body {
     padding: var(--spacing-lg);
 }
 
+@media (max-width: 999px) {
+    .download-panel {
+        padding: 0;
+    }
+
+    .download-panel .download-individual {
+        display: none;
+    }
+}
+
 .download-header {
     margin-bottom: var(--spacing-md);
 }
@@ -654,10 +658,6 @@ body {
     font-size: 1rem;
     font-weight: 600;
     color: var(--color-text-primary);
-}
-
-.download-actions {
-    margin-bottom: var(--spacing-md);
 }
 
 .download-all-btn {

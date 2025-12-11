@@ -89,17 +89,6 @@ export class ControlPanel extends Hideable {
             <input 
               type="radio" 
               name="unevenHandling" 
-              value="pad" 
-              ${this.config.unevenHandling === "pad" ? "checked" : ""}
-            />
-            <span class="${this.selectorClasses.radioLabel}">
-              <span>Add padding</span>
-            </span>
-          </label>
-          <label class="${this.selectorClasses.radioOption}">
-            <input 
-              type="radio" 
-              name="unevenHandling" 
               value="crop" 
               ${this.config.unevenHandling === "crop" ? "checked" : ""}
             />
@@ -107,6 +96,17 @@ export class ControlPanel extends Hideable {
               <span>Crop to fit</span>
             </span>
           </label>
+          <label class="${this.selectorClasses.radioOption}">
+            <input 
+              type="radio" 
+              name="unevenHandling" 
+              value="pad" 
+              ${this.config.unevenHandling === "pad" ? "checked" : ""}
+            />
+            <span class="${this.selectorClasses.radioLabel}">
+              <span>Add left/right padding</span>
+            </span>
+          </label>          
         </div>
       </div>
 

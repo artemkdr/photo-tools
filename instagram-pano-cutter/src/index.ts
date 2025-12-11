@@ -20,7 +20,7 @@ class App {
     private currentFile: File | null = null;
     private config: SliceConfig = {
         aspectRatio: "4:5",
-        unevenHandling: "pad",
+        unevenHandling: "crop",
         paddingColor: "#ffffff",
         manualPaddingX: 0,
         manualPaddingY: 0,
