@@ -144,12 +144,6 @@ body {
     align-items: start;
 }
 
-@media (min-width: 768px) {
-    .app-main {
-        grid-template-columns: 300px 1fr;
-    }
-}
-
 .sidebar {
     display: flex;
     flex-direction: column;
@@ -160,6 +154,125 @@ body {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-lg);
+}
+
+/* ===================================
+   Responsive adjustments
+   =================================== */
+/* Desktop uses sidebar layout only when we have enough horizontal space (>=1000px) */
+@media (min-width: 1000px) {
+    .app-main {
+        grid-template-columns: 300px 1fr;
+    }
+}
+
+/* Mobile layout adjustments */
+@media (max-width: 999px) {
+    .app-container {
+        padding: var(--spacing-md);
+    }
+    .app-main {
+        gap: var(--spacing-lg);
+    }
+
+    .app-header {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: var(--spacing-md);
+    }
+
+    /* Mobile reflow: make sidebar and content children participate in document flow so we can reorder visually.
+       display: contents removes the sidebar wrapper for rendering (keeps DOM), then we use order.
+       Note: display: contents has some accessibility caveats but works for layout reflow.
+    */
+    .app-main > .content {
+        display: contents;
+    }
+    .app-main > .sidebar {
+        display: contents;
+    }
+
+    /* Explicit visual order on small screens: uploader -> preview -> control -> download */
+    #uploader-container {
+        order: 0;
+    }
+    #preview-container {
+        order: 1;
+    }
+    #control-panel-container {
+        order: 2;
+    }
+    #download-panel-container {
+        order: 3;
+    }
+
+    /* Make preview slices fill the usable viewport width reliably across rotations/tablets.
+       Use calc-based sizing subtracting horizontal app padding so the slice reaches screen edges.
+       Add touch-friendly scrolling and scroll-snap for an Instagram-like swipe experience. */
+    .preview-grid {
+        display: flex;
+        flex-direction: row;
+        gap: var(--spacing-sm);
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-gutter: stable;
+        /* allow the grid to span the viewport so items can snap to edges */
+        width: calc(100dvw - var(--spacing-2xl) - var(--spacing-xl));
+        box-sizing: border-box;
+    }
+
+    .preview-item {
+        /* Compute item width as full dynamic viewport width minus the app horizontal padding.
+           Provide two fallbacks: vw then dvw for browsers that support dvw. */
+        flex: 0 0 auto;
+        padding: 0;
+        box-sizing: border-box;
+        width: calc(100dvw - var(--spacing-2xl) - var(--spacing-xl));
+        max-width: 100dvw;
+    }
+
+    .preview-item canvas {
+        width: 100%;
+        height: auto;
+        display: block;
+        max-width: 100%;
+        background-clip: padding-box;
+    }
+
+    section.content {
+        max-width: 100%;
+    }
+
+    .download-panel {
+        padding: 0;
+    }
+
+    .download-panel .download-individual {
+        display: none;
+    }
+}
+
+@media (max-width: 999px) and (orientation: landscape) {
+    .preview-item {
+        max-width: 100dvh;
+    }
+}
+
+/* Use uploader state to show initial centered uploader when there's no image.
+   Rely on the uploader having the `.image-uploader.minimized` class after upload.
+   We detect absence of that class using :has(). This is CSS-only when supported. */
+.app-main:not(:has(.image-uploader.minimized)) {
+    /* Keep single column and center the sidebar (uploader) */
+    grid-template-columns: 1fr;
+}
+.app-main:not(:has(.image-uploader.minimized)) .content {
+    display: none;
+}
+.app-main:not(:has(.image-uploader.minimized)) .sidebar {
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 760px;
+    align-items: center;
 }
 
 /* ===================================
@@ -216,7 +329,7 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: var(--spacing-2xl);
+    padding: var(--spacing-md);
     border: 2px dashed var(--color-border);
     border-radius: var(--radius-lg);
     background-color: var(--color-bg-secondary);
@@ -240,22 +353,28 @@ body {
 
 .upload-icon {
     color: var(--color-text-tertiary);
-    margin-bottom: var(--spacing-md);
 }
 
 .upload-text {
     color: var(--color-text-primary);
-    margin-bottom: var(--spacing-sm);
 }
 
 .upload-text span {
     display: block;
     color: var(--color-text-secondary);
-    font-size: 0.875rem;
+    font-size: 0.875em;
+}
+
+.image-uploader.minimized .upload-zone {
+    font-size: 0.75rem;
+    padding: var(--spacing-sm);
+}
+.image-uploader.minimized .upload-text {
+    display: none;
 }
 
 .upload-formats {
-    font-size: 0.75rem;
+    font-size: 0.75em;
     color: var(--color-text-tertiary);
 }
 
@@ -289,6 +408,9 @@ body {
     background-color: var(--color-bg-secondary);
     border-radius: var(--radius-lg);
     padding: var(--spacing-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
 }
 
 .control-group {
@@ -369,7 +491,7 @@ body {
 /* Padding inputs */
 .padding-inputs {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     gap: var(--spacing-md);
 }
 
@@ -377,6 +499,18 @@ body {
     display: flex;
     flex-direction: row;
     gap: var(--spacing-sm);
+    justify-content: space-between;
+}
+
+.padding-input .number-input-label {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    min-width: 6rem;
+    text-align: left;
+}
+
+.padding-input input[type="range"] {
+    min-width: 9rem;
 }
 
 /* Color picker */
@@ -667,35 +801,6 @@ body {
 .reset-btn {
     margin-top: var(--spacing-md);
     width: 100%;
-}
-
-/* ===================================
-   Responsive adjustments
-   =================================== */
-
-@media (max-width: 767px) {
-    .app-container {
-        padding: var(--spacing-md);
-    }
-
-    .app-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: var(--spacing-md);
-    }
-
-    .preview-grid {
-        display: flex;
-        flex-wrap: nowrap;
-        gap: var(--spacing-sm);
-        overflow-x: auto;
-        max-width: 100%;
-        box-sizing: border-box;
-    }
-
-    section.content {
-        max-width: 92vw;
-    }
 }
 
 /* ===================================

@@ -1,20 +1,44 @@
 import type { AspectRatio, UnevenHandling, SliceConfig } from "../types";
+import { Hideable } from "./hideable";
 
 export type ConfigChangeCallback = (config: SliceConfig) => void;
 
 /**
  * Control panel component for configuring slice settings
  */
-export class ControlPanel {
-    private element: HTMLElement;
+export class ControlPanel extends Hideable {
     private config: SliceConfig;
     private onChange: ConfigChangeCallback;
+    private selectorClasses = {
+        controlPanel: "control-panel",
+        controlGroup: "control-group",
+        controlLabel: "control-label",
+        controlHint: "control-hint",
+        radioGroup: "radio-group",
+        radioOption: "radio-option",
+        radioLabel: "radio-label",
+        ratioIcon: "ratio-icon",
+        ratioPortrait: "ratio-portrait",
+        ratioSquare: "ratio-square",
+        paddingInputs: "padding-inputs",
+        paddingInput: "padding-input",
+        numberInputLabel: "number-input-label",
+        colorPickerGroup: "color-picker-group",
+        colorOptions: "color-options",
+        colorPreset: "color-preset",
+        colorWhite: "color-white",
+        colorBlack: "color-black",
+        colorCustom: "color-custom",
+        colorInput: "color-input",
+        colorCustomLabel: "color-custom-label",
+    };
 
     constructor(
         container: HTMLElement,
         initialConfig: SliceConfig,
         onChange: ConfigChangeCallback,
     ) {
+        super(container);
         this.config = { ...initialConfig };
         this.onChange = onChange;
         this.element = this.render();
@@ -25,46 +49,74 @@ export class ControlPanel {
 
     private render(): HTMLElement {
         const el = document.createElement("div");
-        el.className = "control-panel";
+        el.className = this.selectorClasses.controlPanel;
         el.innerHTML = `
-      <div class="control-group">
-        <label class="control-label">Slide Format</label>
-        <div class="radio-group" role="radiogroup" aria-label="Aspect ratio">
-          <label class="radio-option">
-            <input 
-              type="radio" 
-              name="aspectRatio" 
-              value="1:1" 
-              ${this.config.aspectRatio === "1:1" ? "checked" : ""}
-            />
-            <span class="radio-label">
-              <span class="ratio-icon ratio-square"></span>
-              <span>Square (1:1)</span>
-            </span>
-          </label>
-          <label class="radio-option">
+      <div class="${this.selectorClasses.controlGroup}">
+        <label class="${this.selectorClasses.controlLabel}" for="aspectRatio">Slide Format</label>
+        <div class="${this.selectorClasses.radioGroup}" role="radiogroup" aria-label="Aspect ratio">
+          <label class="${this.selectorClasses.radioOption}">
             <input 
               type="radio" 
               name="aspectRatio" 
               value="4:5" 
               ${this.config.aspectRatio === "4:5" ? "checked" : ""}
             />
-            <span class="radio-label">
-              <span class="ratio-icon ratio-portrait"></span>
+            <span class="${this.selectorClasses.radioLabel}">
+              <span class="${this.selectorClasses.ratioIcon} ${this.selectorClasses.ratioPortrait}"></span>
               <span>Portrait (4:5)</span>
+            </span>
+          </label>
+          <label class="${this.selectorClasses.radioOption}">
+            <input 
+              type="radio" 
+              name="aspectRatio" 
+              value="1:1" 
+              ${this.config.aspectRatio === "1:1" ? "checked" : ""}
+            />
+            <span class="${this.selectorClasses.radioLabel}">
+              <span class="${this.selectorClasses.ratioIcon} ${this.selectorClasses.ratioSquare}"></span>
+              <span>Square (1:1)</span>
+            </span>
+          </label>
+        </div>
+      </div>
+      
+      <div class="${this.selectorClasses.controlGroup}">
+        <label class="${this.selectorClasses.controlLabel}" for="unevenHandling">Uneven Slice Handling</label>
+        <p class="${this.selectorClasses.controlHint}">What to do if the image doesn't fit perfectly into slides</p>
+        <div class="${this.selectorClasses.radioGroup}" role="radiogroup" aria-label="Uneven handling">
+          <label class="${this.selectorClasses.radioOption}">
+            <input 
+              type="radio" 
+              name="unevenHandling" 
+              value="pad" 
+              ${this.config.unevenHandling === "pad" ? "checked" : ""}
+            />
+            <span class="${this.selectorClasses.radioLabel}">
+              <span>Add padding</span>
+            </span>
+          </label>
+          <label class="${this.selectorClasses.radioOption}">
+            <input 
+              type="radio" 
+              name="unevenHandling" 
+              value="crop" 
+              ${this.config.unevenHandling === "crop" ? "checked" : ""}
+            />
+            <span class="${this.selectorClasses.radioLabel}">
+              <span>Crop to fit</span>
             </span>
           </label>
         </div>
       </div>
 
-      <div class="control-group">
-        <label class="control-label">Manual Padding</label>
-        <p class="control-hint">Optional margins added before slicing</p>
-        <div class="padding-inputs">
-          <label class="padding-input">
-            <span class="number-input-label">V</span>
+      <div class="${this.selectorClasses.controlGroup}">
+        <label class="${this.selectorClasses.controlLabel}" for="manualPaddingX">Manual Padding</label>
+        <div class="${this.selectorClasses.paddingInputs}">
+          <label class="${this.selectorClasses.paddingInput}">
+            <span class="${this.selectorClasses.numberInputLabel}">Top/Bottom</span>
             <input
-              type="number"
+              type="range"
               name="manualPaddingY"
               min="0" max="100"
               step="1"
@@ -72,10 +124,10 @@ export class ControlPanel {
               aria-label="Vertical padding in rem"
             />
           </label>
-          <label class="padding-input">
-            <span class="number-input-label">H</span>
+          <label class="${this.selectorClasses.paddingInput}">
+            <span class="${this.selectorClasses.numberInputLabel}">Left/Right</span>
             <input
-              type="number"
+              type="range"
               name="manualPaddingX"
               min="0" max="100"
               step="1"
@@ -86,58 +138,30 @@ export class ControlPanel {
         </div>
       </div>
       
-      <div class="control-group">
-        <label class="control-label">Uneven Slice Handling</label>
-        <p class="control-hint">What to do if the last slide doesn't fit perfectly</p>
-        <div class="radio-group" role="radiogroup" aria-label="Uneven handling">
-          <label class="radio-option">
-            <input 
-              type="radio" 
-              name="unevenHandling" 
-              value="pad" 
-              ${this.config.unevenHandling === "pad" ? "checked" : ""}
-            />
-            <span class="radio-label">
-              <span>Add padding</span>
-            </span>
-          </label>
-          <label class="radio-option">
-            <input 
-              type="radio" 
-              name="unevenHandling" 
-              value="crop" 
-              ${this.config.unevenHandling === "crop" ? "checked" : ""}
-            />
-            <span class="radio-label">
-              <span>Crop to fit</span>
-            </span>
-          </label>
-        </div>
-      </div>
-      
-      <div class="control-group color-picker-group">
-        <label class="control-label">Padding Color</label>
-        <div class="color-options">
+      <div class="${this.selectorClasses.controlGroup} ${this.selectorClasses.colorPickerGroup}">
+        <label class="${this.selectorClasses.controlLabel}" for="paddingColor">Padding Color</label>
+        <div class="${this.selectorClasses.colorOptions}">
           <button 
             type="button" 
-            class="color-preset color-white ${this.config.paddingColor === "#ffffff" ? "selected" : ""}" 
+            class="${this.selectorClasses.colorPreset} ${this.selectorClasses.colorWhite} ${this.config.paddingColor === "#ffffff" ? "selected" : ""}" 
             data-color="#ffffff"
             aria-label="White"
           ></button>
           <button 
             type="button" 
-            class="color-preset color-black ${this.config.paddingColor === "#000000" ? "selected" : ""}" 
+            class="${this.selectorClasses.colorPreset} ${this.selectorClasses.colorBlack} ${this.config.paddingColor === "#000000" ? "selected" : ""}" 
             data-color="#000000"
             aria-label="Black"
           ></button>
-          <div class="color-custom">
+          <div class="${this.selectorClasses.colorCustom}">
             <input 
               type="color" 
-              class="color-input" 
+              class="${this.selectorClasses.colorInput}" 
+              name="paddingColor"
               value="${this.config.paddingColor}"
               aria-label="Custom color"
             />
-            <span class="color-custom-label">Custom</span>
+            <span class="${this.selectorClasses.colorCustomLabel}">Custom</span>
           </div>
         </div>
       </div>
@@ -170,18 +194,21 @@ export class ControlPanel {
             });
 
         // Color presets
-        this.element.querySelectorAll(".color-preset").forEach((btn) => {
-            btn.addEventListener("click", (e) => {
-                const color = (e.currentTarget as HTMLElement).dataset.color;
-                if (!color) return;
-                this.setColor(color);
-                this.emitChange();
+        this.element
+            .querySelectorAll(`.${this.selectorClasses.colorPreset}`)
+            .forEach((btn) => {
+                btn.addEventListener("click", (e) => {
+                    const color = (e.currentTarget as HTMLElement).dataset
+                        .color;
+                    if (!color) return;
+                    this.setColor(color);
+                    this.emitChange();
+                });
             });
-        });
 
         // Custom color picker
         const colorInput = this.element.querySelector(
-            ".color-input",
+            `.${this.selectorClasses.colorInput}`,
         ) as HTMLInputElement;
         colorInput.addEventListener("input", (e) => {
             const color = (e.target as HTMLInputElement).value;
@@ -230,22 +257,24 @@ export class ControlPanel {
         this.config.paddingColor = color;
 
         // Update UI
-        this.element.querySelectorAll(".color-preset").forEach((btn) => {
-            btn.classList.toggle(
-                "selected",
-                (btn as HTMLElement).dataset.color === color,
-            );
-        });
+        this.element
+            .querySelectorAll(`.${this.selectorClasses.colorPreset}`)
+            .forEach((btn) => {
+                btn.classList.toggle(
+                    "selected",
+                    (btn as HTMLElement).dataset.color === color,
+                );
+            });
 
         const colorInput = this.element.querySelector(
-            ".color-input",
+            `.${this.selectorClasses.colorInput}`,
         ) as HTMLInputElement;
         colorInput.value = color;
     }
 
     private updateColorPickerVisibility(): void {
         const colorGroup = this.element.querySelector(
-            ".color-picker-group",
+            `.${this.selectorClasses.colorPickerGroup}`,
         ) as HTMLElement;
         const hasManualPadding =
             this.config.manualPaddingX > 0 || this.config.manualPaddingY > 0;
@@ -255,23 +284,17 @@ export class ControlPanel {
                 : "none";
     }
 
+    /**
+     * emit change with debouncer
+     */
+    private debounceTimeout: number | null = null;
+
     private emitChange(): void {
-        this.onChange({ ...this.config });
-    }
-
-    /**
-     * Get current configuration
-     */
-    public getConfig(): SliceConfig {
-        return { ...this.config };
-    }
-
-    /**
-     * Update configuration externally
-     */
-    public setConfig(config: Partial<SliceConfig>): void {
-        this.config = { ...this.config, ...config };
-        // Re-render would be needed for full update, but for now just emit
-        this.emitChange();
+        if (this.debounceTimeout) {
+            clearTimeout(this.debounceTimeout);
+        }
+        this.debounceTimeout = setTimeout(() => {
+            this.onChange({ ...this.config });
+        }, 10);
     }
 }

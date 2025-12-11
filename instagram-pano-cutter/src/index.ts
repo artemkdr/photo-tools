@@ -13,11 +13,13 @@ import { ThemeToggle } from "./components/theme-toggle";
 class App {
     private slicePreview!: SlicePreview;
     private downloadPanel!: DownloadPanel;
+    private controlPanel!: ControlPanel;
+    private uploader!: ImageUploader;
 
     private currentImage: HTMLImageElement | null = null;
     private currentFile: File | null = null;
     private config: SliceConfig = {
-        aspectRatio: "1:1",
+        aspectRatio: "4:5",
         unevenHandling: "pad",
         paddingColor: "#ffffff",
         manualPaddingX: 0,
@@ -40,7 +42,7 @@ class App {
 
         // Initialize uploader
         const uploaderContainer = this.getUploadContainer();
-        new ImageUploader(
+        this.uploader = new ImageUploader(
             uploaderContainer,
             this.handleImageLoad.bind(this),
             this.handleError.bind(this),
@@ -53,11 +55,13 @@ class App {
         if (!controlContainer) {
             throw new Error("Control panel container not found");
         }
-        new ControlPanel(
+        this.controlPanel = new ControlPanel(
             controlContainer,
             this.config,
             this.handleConfigChange.bind(this),
         );
+        // hide control panel until an image is loaded
+        this.controlPanel.hide();
 
         // Initialize preview
         const previewContainer = document.getElementById("preview-container");
@@ -65,6 +69,8 @@ class App {
             throw new Error("Preview container not found");
         }
         this.slicePreview = new SlicePreview(previewContainer);
+        // hide preview until an image is loaded
+        this.slicePreview.hide();
 
         // Initialize download panel
         const downloadContainer = document.getElementById(
@@ -74,6 +80,8 @@ class App {
             throw new Error("Download panel container not found");
         }
         this.downloadPanel = new DownloadPanel(downloadContainer);
+        // hide download panel until an image is loaded
+        this.downloadPanel.hide();
     }
 
     private getUploadContainer(): HTMLElement {
@@ -90,6 +98,31 @@ class App {
 
         // Process and update info display
         this.processImage();
+
+        // update UI visibility
+        this.updateUI();
+
+        // Fallback for browsers that don't support :has(): toggle a class on root
+        // so CSS can target `.app-container.has-image` as a substitute for :has().
+        // We keep this minimal and non-invasive.
+        const root = document.querySelector<HTMLElement>(".app-container");
+        if (root && !CSS.supports("selector(:has(*))")) {
+            root.classList.add("has-image");
+        }
+    }
+
+    private updateUI(): void {
+        // minimize uploader
+        this.uploader.minimize();
+
+        // Show control panel
+        this.controlPanel.show();
+
+        // Show preview
+        this.slicePreview.show();
+
+        // Show download panel
+        this.downloadPanel.show();
     }
 
     private handleConfigChange(config: SliceConfig): void {

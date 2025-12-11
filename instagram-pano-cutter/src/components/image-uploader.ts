@@ -3,6 +3,7 @@ import {
     isSupportedExtension,
     SUPPORTED_EXTENSIONS,
 } from "../types";
+import { Hideable } from "./hideable";
 
 export type ImageLoadCallback = (image: HTMLImageElement, file: File) => void;
 export type ErrorCallback = (message: string) => void;
@@ -10,17 +11,27 @@ export type ErrorCallback = (message: string) => void;
 /**
  * Image uploader component with drag-drop and file input support
  */
-export class ImageUploader {
-    private element: HTMLElement;
+export class ImageUploader extends Hideable {
     private fileInput: HTMLInputElement;
     private onImageLoad: ImageLoadCallback;
     private onError: ErrorCallback;
+    private selectorClasses = {
+        uploadZone: "upload-zone",
+        uploadIcon: "upload-icon",
+        uploadText: "upload-text",
+        fileInput: "file-input",
+        errorMessage: "error-message",
+        imageUploader: "image-uploader",
+        minimized: "minimized",
+        visible: "visible",
+    };
 
     constructor(
         container: HTMLElement,
         onImageLoad: ImageLoadCallback,
         onError: ErrorCallback,
     ) {
+        super(container);
         this.onImageLoad = onImageLoad;
         this.onError = onError;
         this.element = this.render();
@@ -31,38 +42,42 @@ export class ImageUploader {
 
     private render(): HTMLElement {
         const el = document.createElement("div");
-        el.className = "image-uploader";
+        el.className = this.selectorClasses.imageUploader;
         el.innerHTML = `
-      <div class="upload-zone" tabindex="0" role="button" aria-label="Upload image">
-        <div class="upload-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="17 8 12 3 7 8"/>
-            <line x1="12" y1="3" x2="12" y2="15"/>
-          </svg>
+          <div class="${this.selectorClasses.uploadZone}" tabindex="0" role="button" aria-label="Upload image">
+        <div class="${this.selectorClasses.uploadIcon}">
+          <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" height="24px" width="24px" xmlns="http://www.w3.org/2000/svg"><path d="M21 15V18H24V20H21V23H19V20H16V18H19V15H21ZM21.0082 3C21.556 3 22 3.44495 22 3.9934L22.0007 13.3417C21.3749 13.1204 20.7015 13 20 13V5H4L4.001 19L13.2929 9.70715C13.6528 9.34604 14.22 9.31823 14.6123 9.62322L14.7065 9.70772L18.2521 13.2586C15.791 14.0069 14 16.2943 14 19C14 19.7015 14.1204 20.3749 14.3417 21.0007L2.9918 21C2.44405 21 2 20.5551 2 20.0066V3.9934C2 3.44476 2.45531 3 2.9918 3H21.0082ZM8 7C9.10457 7 10 7.89543 10 9C10 10.1046 9.10457 11 8 11C6.89543 11 6 10.1046 6 9C6 7.89543 6.89543 7 8 7Z"></path></svg>
         </div>
-        <p class="upload-text">
-          <strong>Drop your image here</strong>
-          <span>or click to browse</span>
-        </p>
-        <p class="upload-formats">
-          Supports: ${SUPPORTED_EXTENSIONS.join(", ")}
+        <p class="${this.selectorClasses.uploadText}">
+          <strong>Drop image here or click to select</strong>
+          <span>Your photos stay private on your device</span>
         </p>
         <input 
           type="file" 
           accept="${SUPPORTED_EXTENSIONS.map((ext) => ext).join(",")},image/jpeg,image/png,image/gif,image/webp,image/avif,image/bmp"
-          class="file-input"
+          class="${this.selectorClasses.fileInput}"
           aria-hidden="true"
         />
-      </div>
-      <div class="error-message" role="alert" aria-live="polite"></div>
-    `;
+          </div>
+          <div class="${this.selectorClasses.errorMessage}" role="alert" aria-live="polite"></div>
+        `;
         return el;
     }
 
-    private bindEvents(): void {
-        const uploadZone = this.element.querySelector(".upload-zone");
+    public maximize(): void {
+        // remove minimized class from element
+        this.element.classList.remove(this.selectorClasses.minimized);
+    }
 
+    public minimize(): void {
+        // add minimized class to element
+        this.element.classList.add(this.selectorClasses.minimized);
+    }
+
+    private bindEvents(): void {
+        const uploadZone = this.element.querySelector(
+            `.${this.selectorClasses.uploadZone}`,
+        );
         if (!uploadZone) {
             throw new Error("Upload zone not found");
         }
@@ -159,32 +174,21 @@ export class ImageUploader {
     }
 
     private showError(message: string): void {
-        const errorEl = this.element.querySelector(".error-message");
+        const errorEl = this.element.querySelector(
+            `.${this.selectorClasses.errorMessage}`,
+        );
         if (errorEl) {
             errorEl.textContent = message;
-            errorEl.classList.add("visible");
+            errorEl.classList.add(this.selectorClasses.visible);
         }
         this.onError(message);
     }
 
     private clearError(): void {
-        const errorEl = this.element.querySelector(".error-message")!;
+        const errorEl = this.element.querySelector(
+            `.${this.selectorClasses.errorMessage}`,
+        )!;
         errorEl.textContent = "";
-        errorEl.classList.remove("visible");
-    }
-
-    /**
-     * Reset the uploader to initial state
-     */
-    public reset(): void {
-        this.fileInput.value = "";
-        this.clearError();
-    }
-
-    /**
-     * Show/hide the uploader
-     */
-    public setVisible(visible: boolean): void {
-        this.element.style.display = visible ? "" : "none";
+        errorEl.classList.remove(this.selectorClasses.visible);
     }
 }
