@@ -1,3 +1,4 @@
+import { CanvasFactory } from "../utils/canvas-factory";
 import { Hideable } from "./hideable";
 
 /**
@@ -6,7 +7,13 @@ import { Hideable } from "./hideable";
 export class SlicePreview extends Hideable {
     private previewContainer: HTMLElement;
     private slices: HTMLCanvasElement[] = [];
-    private wrapperMap: Map<HTMLElement, HTMLCanvasElement> = new Map();
+    private wrapperMap: Map<
+        HTMLElement,
+        {
+            canvas: HTMLCanvasElement;
+            requestedAnimationFrameId?: number;
+        }
+    > = new Map();
     private selectorClasses = {
         previewGrid: "preview-grid",
         slicePreviewClass: "slice-preview",
@@ -48,13 +55,18 @@ export class SlicePreview extends Hideable {
 
         this.slices = slices;
 
-        slices.forEach((canvas, index) => {
+        this.slices.forEach((canvas, index) => {
             const wrapper = document.createElement("div");
             wrapper.className = this.selectorClasses.previewItem;
 
             // Create a DPR-aware scaled preview canvas so CSS scaling stays crisp.
             // Compute a target display width (in CSS pixels) — keep it moderate to save memory.
-            const previewCanvas = document.createElement("canvas");
+            const previewCanvas = CanvasFactory.getCanvas(
+                1,
+                1,
+                `slice-preview-thumb-${index}`,
+            );
+            CanvasFactory.cleanCanvas(previewCanvas);
             const displayMaxWidth = 200; // CSS pixels — preview thumb size
 
             // Determine scale to fit the slice into displayMaxWidth while preserving aspect ratio
@@ -98,13 +110,16 @@ export class SlicePreview extends Hideable {
             wrapper.appendChild(label);
             this.previewContainer.appendChild(wrapper);
 
-            // Remember mapping wrapper -> source canvas for later updates
-            this.wrapperMap.set(wrapper, canvas);
-
             // Ensure final high-quality rendering after layout (use RAF to wait for layout)
-            requestAnimationFrame(() =>
-                this.updatePreviewCanvas(previewCanvas, canvas, wrapper),
-            );
+            const refId = requestAnimationFrame(() => {
+                this.updatePreviewCanvas(previewCanvas, canvas, wrapper);
+            });
+
+            // Remember mapping wrapper -> source canvas for later updates
+            this.wrapperMap.set(wrapper, {
+                canvas: previewCanvas,
+                requestedAnimationFrameId: refId,
+            });
         });
 
         // Update info text
@@ -116,23 +131,30 @@ export class SlicePreview extends Hideable {
         }
 
         this.element.classList.add("has-slices");
+
+        // reset preview grid scroll position
+        this.previewContainer.scrollLeft = 0;
+        this.previewContainer.scrollTop = 0;
     }
 
     /**
      * Clear all previews
      */
     private clear(): void {
-        this.slices.forEach((canvas) => {
-            // Clean up canvas resources if needed
-            const ctx = canvas.getContext("2d");
-            if (ctx) {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-            }
-            canvas.width = 0;
-            canvas.height = 0;
-            canvas.remove();
-        });
         this.slices = [];
+
+        // clear wrappers
+        this.wrapperMap.forEach((value, wrapper) => {
+            wrapper.innerHTML = "";
+            wrapper.remove();
+            // cancel any pending animation frames
+            const rafId = value.requestedAnimationFrameId;
+            if (rafId !== undefined) {
+                cancelAnimationFrame(rafId);
+            }
+        });
+        this.wrapperMap.clear();
+
         // Clear preview container
         this.previewContainer.innerHTML = "";
         this.element.classList.remove("has-slices");
@@ -143,8 +165,6 @@ export class SlicePreview extends Hideable {
         if (infoEl) {
             infoEl.textContent = "";
         }
-
-        this.wrapperMap = new Map();
     }
 
     /**
@@ -155,6 +175,11 @@ export class SlicePreview extends Hideable {
         sourceCanvas: HTMLCanvasElement,
         wrapper: HTMLElement,
     ) {
+        // check if wrapper is still in DOM
+        if (!document.body.contains(wrapper)) {
+            return;
+        }
+
         const rect = wrapper.getBoundingClientRect();
         const cssWidth = Math.max(1, Math.round(rect.width));
         const aspect = sourceCanvas.width / sourceCanvas.height;
@@ -170,22 +195,30 @@ export class SlicePreview extends Hideable {
         previewCanvas.width = Math.round(cssWidth * dpr);
         previewCanvas.height = Math.round(cssHeight * dpr);
 
-        const ctx = previewCanvas.getContext("2d");
-        if (ctx) {
-            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-            ctx.imageSmoothingQuality = "high";
-            ctx.clearRect(0, 0, cssWidth, cssHeight);
-            ctx.drawImage(
-                sourceCanvas,
-                0,
-                0,
-                sourceCanvas.width,
-                sourceCanvas.height,
-                0,
-                0,
-                cssWidth,
-                cssHeight,
-            );
+        // check that canvas dimensions are valid
+        if (
+            sourceCanvas.width > 0 &&
+            sourceCanvas.height > 0 &&
+            cssWidth > 0 &&
+            cssHeight > 0
+        ) {
+            const ctx = previewCanvas.getContext("2d");
+            if (ctx) {
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                ctx.imageSmoothingQuality = "high";
+                ctx.clearRect(0, 0, cssWidth, cssHeight);
+                ctx.drawImage(
+                    sourceCanvas,
+                    0,
+                    0,
+                    sourceCanvas.width,
+                    sourceCanvas.height,
+                    0,
+                    0,
+                    cssWidth,
+                    cssHeight,
+                );
+            }
         }
     }
 }

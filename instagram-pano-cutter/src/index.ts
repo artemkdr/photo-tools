@@ -6,6 +6,7 @@ import { ControlPanel } from "./components/control-panel";
 import { SlicePreview } from "./components/slice-preview";
 import { DownloadPanel } from "./components/download-panel";
 import { ThemeToggle } from "./components/theme-toggle";
+import { debounce } from "./utils/debounce";
 
 /**
  * Main application class
@@ -128,12 +129,18 @@ class App {
         this.downloadPanel.show();
     }
 
+    private readonly debouncedProcessImage = debounce(() => {
+        this.processImage();
+    }, 50);
+
     private handleConfigChange(config: SliceConfig): void {
         this.config = config;
 
         // Re-process if we have an image
         if (this.currentImage) {
-            this.processImage();
+            // process with debouncer
+            // use closure for debouncer
+            this.debouncedProcessImage();
         }
     }
 

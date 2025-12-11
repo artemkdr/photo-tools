@@ -3,6 +3,7 @@ import {
     type SliceResult,
     INSTAGRAM_DIMENSIONS,
 } from "../types";
+import { CanvasFactory } from "./canvas-factory";
 import { getOptimalCropping } from "./get-optimal-cropping";
 
 /**
@@ -33,23 +34,25 @@ export function sliceImage(
     const slices: HTMLCanvasElement[] = [];
     let lastSliceAdjusted = false;
 
+    const adjustedCanvas = CanvasFactory.getCanvas(
+        1,
+        1,
+        "slicer-adjusted-canvas",
+    );
+
     // If padding is requested, pad the entire image left/right so all slices align seamlessly.
     // If cropping is requested, crop the whole image to the nearest slice multiple before slicing.
     const needsAdjustment = normalizedWidth % sliceWidth !== 0;
-    let sliceSource: CanvasImageSource = sourceCanvas;
-
+    const ctx = adjustedCanvas.getContext("2d");
+    if (!ctx) {
+        throw new Error("Failed to get 2D context");
+    }
     if (needsAdjustment) {
         if (unevenHandling === "pad") {
             // padded real width of the whole image
             const paddedWidth = sliceCount * sliceWidth;
-            const paddedCanvas = document.createElement("canvas");
-            paddedCanvas.width = paddedWidth;
-            paddedCanvas.height = imageHeight;
-            const ctx = paddedCanvas.getContext("2d");
-
-            if (!ctx) {
-                throw new Error("Failed to get 2D context");
-            }
+            adjustedCanvas.width = paddedWidth;
+            adjustedCanvas.height = imageHeight;
 
             // Fill background with padding color, then center the original image
             ctx.fillStyle = paddingColor;
@@ -58,7 +61,6 @@ export function sliceImage(
             // center the image
             ctx.drawImage(sourceCanvas, offsetX, 0, imageWidth, imageHeight);
 
-            sliceSource = paddedCanvas;
             lastSliceAdjusted = true;
         } else if (unevenHandling === "crop") {
             // try to find optimal number of slices
@@ -73,13 +75,8 @@ export function sliceImage(
             sliceWidth = optimalCropping.cropWidth / sliceCount;
             sliceHeight = optimalCropping.cropHeight;
 
-            const cropCanvas = document.createElement("canvas");
-            cropCanvas.width = optimalCropping.cropWidth;
-            cropCanvas.height = optimalCropping.cropHeight;
-            const ctx = cropCanvas.getContext("2d");
-            if (!ctx) {
-                throw new Error("Failed to get 2D context");
-            }
+            adjustedCanvas.width = optimalCropping.cropWidth;
+            adjustedCanvas.height = optimalCropping.cropHeight;
 
             // Center-crop the whole image horizontally and vertically
             ctx.drawImage(
@@ -94,9 +91,13 @@ export function sliceImage(
                 optimalCropping.cropHeight,
             );
 
-            sliceSource = cropCanvas;
             lastSliceAdjusted = imageWidth !== optimalCropping.cropWidth;
         }
+    } else {
+        // no adjustment needed, use original
+        adjustedCanvas.width = imageWidth;
+        adjustedCanvas.height = imageHeight;
+        ctx.drawImage(sourceCanvas, 0, 0, imageWidth, imageHeight);
     }
 
     for (let i = 0; i < sliceCount; i++) {
@@ -104,12 +105,13 @@ export function sliceImage(
         const sourceY = 0;
         slices.push(
             createFullSlice(
-                sliceSource,
+                adjustedCanvas,
                 sourceX,
                 sourceY,
                 sliceWidth,
                 sliceHeight,
                 targetDimensions,
+                i,
             ),
         );
     }
@@ -137,28 +139,24 @@ function buildSourceCanvas(
     const paddedWidth = image.naturalWidth + paddingX;
     const paddedHeight = image.naturalHeight + paddingY;
 
-    const canvas = document.createElement("canvas");
+    const canvas = CanvasFactory.getCanvas(1, 1, "slicer-source-canvas");
+    CanvasFactory.cleanCanvas(canvas);
     canvas.width = paddedWidth;
     canvas.height = paddedHeight;
 
     const ctx = canvas.getContext("2d");
-    if (!ctx) {
-        throw new Error("Failed to get 2D context");
+    if (ctx) {
+        // Fill background with padding color, then center the original image
+        ctx.clearRect(0, 0, paddedWidth, paddedHeight);
+        ctx.fillStyle = config.paddingColor;
+        ctx.fillRect(0, 0, paddedWidth, paddedHeight);
+        // Draw the original image centered with padding
+        ctx.drawImage(image, manualPaddingX, manualPaddingY);
     }
-
-    // Fill background with padding color, then center the original image
-    ctx.clearRect(0, 0, paddedWidth, paddedHeight);
-    ctx.fillStyle = config.paddingColor;
-    ctx.fillRect(0, 0, paddedWidth, paddedHeight);
-    // Draw the original image centered with padding
-    ctx.drawImage(image, manualPaddingX, manualPaddingY);
 
     return canvas;
 }
 
-/**
- * Create a full slice (no adjustments needed)
- */
 function createFullSlice(
     image: CanvasImageSource,
     sourceX: number,
@@ -166,27 +164,30 @@ function createFullSlice(
     sourceWidth: number,
     sourceHeight: number,
     targetDimensions: { width: number; height: number },
+    index = 0,
 ): HTMLCanvasElement {
-    const canvas = document.createElement("canvas");
+    const canvas = CanvasFactory.getCanvas(
+        targetDimensions.width,
+        targetDimensions.height,
+        `slicer-full-slice-${index}`,
+    );
+    CanvasFactory.cleanCanvas(canvas);
     canvas.width = targetDimensions.width;
     canvas.height = targetDimensions.height;
-
     const ctx = canvas.getContext("2d");
-    if (!ctx) {
-        throw new Error("Failed to get 2D context");
+    if (ctx) {
+        // clear previous rendering
+        ctx.drawImage(
+            image,
+            sourceX,
+            sourceY,
+            sourceWidth,
+            sourceHeight, // Source rectangle
+            0,
+            0,
+            targetDimensions.width,
+            targetDimensions.height, // Destination rectangle
+        );
     }
-
-    ctx.drawImage(
-        image,
-        sourceX,
-        sourceY,
-        sourceWidth,
-        sourceHeight, // Source rectangle
-        0,
-        0,
-        targetDimensions.width,
-        targetDimensions.height, // Destination rectangle
-    );
-
     return canvas;
 }

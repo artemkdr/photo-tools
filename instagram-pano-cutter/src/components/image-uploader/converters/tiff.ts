@@ -25,12 +25,17 @@ export async function convertTiffToBlob(
         imageData.data.set(new Uint8ClampedArray(rgba));
         ctx.putImageData(imageData, 0, 0);
 
-        return await new Promise<Blob>((resolve, reject) => {
+        const result = await new Promise<Blob>((resolve, reject) => {
             canvas.toBlob((b) => {
                 if (b) resolve(b);
                 else reject(new Error("Canvas toBlob failed"));
             }, "image/png");
         });
+        // clean up canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        canvas.width = 0;
+        canvas.height = 0;
+        return result;
     } catch (e) {
         onError?.(e);
         throw e;

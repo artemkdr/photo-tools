@@ -118,7 +118,7 @@ export class ControlPanel extends Hideable {
             <input
               type="range"
               name="manualPaddingY"
-              min="0" max="100"
+              min="0" max="120"
               step="1"
               value="${this.convertPixelsToRem(this.config.manualPaddingY)}"
               aria-label="Vertical padding in rem"
@@ -129,7 +129,7 @@ export class ControlPanel extends Hideable {
             <input
               type="range"
               name="manualPaddingX"
-              min="0" max="100"
+              min="0" max="120"
               step="1"
               value="${this.convertPixelsToRem(this.config.manualPaddingX)}"
               aria-label="Horizontal padding in rem"
@@ -284,17 +284,7 @@ export class ControlPanel extends Hideable {
                 : "none";
     }
 
-    /**
-     * emit change with debouncer
-     */
-    private debounceTimeout: number | null = null;
-
     private emitChange(): void {
-        if (this.debounceTimeout) {
-            clearTimeout(this.debounceTimeout);
-        }
-        this.debounceTimeout = setTimeout(() => {
-            this.onChange({ ...this.config });
-        }, 10);
+        this.onChange({ ...this.config });
     }
 }

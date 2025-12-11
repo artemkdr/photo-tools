@@ -6,8 +6,6 @@ import {
     SUPPORTED_EXTENSIONS,
 } from "../../types";
 import { Hideable } from "../hideable";
-import { convertHeicToBlob } from "./converters/heic";
-import { convertTiffToBlob } from "./converters/tiff";
 
 export type ImageLoadCallback = (image: HTMLImageElement, file: File) => void;
 export type ErrorCallback = (message: string) => void;
@@ -171,12 +169,16 @@ export class ImageUploader extends Hideable {
             let processedFile: File | Blob = file;
 
             if (isHeic) {
+                // import dynamically to reduce initial bundle size
+                const { convertHeicToBlob } = await import("./converters/heic");
                 processedFile = await convertHeicToBlob(file, (_) => {
                     this.showError(
                         "Failed to decode HEIC. Try converting the file to JPEG/PNG using your OS or an online tool.",
                     );
                 });
             } else if (isTiff) {
+                // import dynamically to reduce initial bundle size
+                const { convertTiffToBlob } = await import("./converters/tiff");
                 processedFile = await convertTiffToBlob(file, (_) => {
                     this.showError(
                         "Failed to decode TIFF. Try converting the file to JPEG/PNG using a tool.",
