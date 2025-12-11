@@ -31,6 +31,10 @@ class App {
     }
 
     private init(): void {
+        // global error handler
+        window.addEventListener("error", (event) => {
+            this.handleError(event);
+        });
         // Initialize theme toggle
         const themeContainer = document.getElementById(
             "theme-toggle-container",
@@ -45,7 +49,6 @@ class App {
         this.uploader = new ImageUploader(
             uploaderContainer,
             this.handleImageLoad.bind(this),
-            this.handleError.bind(this),
         );
 
         // Initialize control panel
@@ -134,13 +137,27 @@ class App {
         }
     }
 
-    private handleThemeChange(theme: Theme): void {
-        // Theme is already applied by ThemeToggle component
-        console.log("Theme changed to:", theme);
+    private handleThemeChange(_theme: Theme): void {
+        // do nothing for the moment
     }
 
-    private handleError(message: string): void {
-        console.error("Error:", message);
+    private handleError(error: { message: string; hidden?: boolean }): void {
+        console.error("Error:", error);
+        const message =
+            error.message || String(error) || "An unknown error occurred";
+        if (
+            error instanceof Error &&
+            "hidden" in error &&
+            error.hidden === true
+        ) {
+            return;
+        }
+        this.showErrorMessage(message);
+    }
+
+    private showErrorMessage(message: string): void {
+        // show alert for now
+        alert(`Error: ${message}`);
     }
 
     private processImage(): SliceResult | undefined {

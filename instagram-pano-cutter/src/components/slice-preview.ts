@@ -7,7 +7,6 @@ export class SlicePreview extends Hideable {
     private previewContainer: HTMLElement;
     private slices: HTMLCanvasElement[] = [];
     private wrapperMap: Map<HTMLElement, HTMLCanvasElement> = new Map();
-    private resizeObserver: ResizeObserver | null = null;
     private selectorClasses = {
         previewGrid: "preview-grid",
         slicePreviewClass: "slice-preview",
@@ -25,26 +24,6 @@ export class SlicePreview extends Hideable {
             `.${this.selectorClasses.previewGrid}`,
         )!;
         container.appendChild(this.element);
-
-        // Create a ResizeObserver to update thumbnails when their container size changes
-        if (typeof ResizeObserver !== "undefined") {
-            this.resizeObserver = new ResizeObserver((entries) => {
-                for (const entry of entries) {
-                    const wrapper = entry.target as HTMLElement;
-                    const previewCanvas = wrapper.querySelector(
-                        "canvas",
-                    ) as HTMLCanvasElement | null;
-                    const source = this.wrapperMap.get(wrapper);
-                    if (previewCanvas && source) {
-                        this.updatePreviewCanvas(
-                            previewCanvas,
-                            source,
-                            wrapper,
-                        );
-                    }
-                }
-            });
-        }
     }
 
     private render(): HTMLElement {
@@ -122,11 +101,6 @@ export class SlicePreview extends Hideable {
             // Remember mapping wrapper -> source canvas for later updates
             this.wrapperMap.set(wrapper, canvas);
 
-            // Observe size changes for this wrapper so we can re-render thumbnails responsively
-            if (this.resizeObserver) {
-                this.resizeObserver.observe(wrapper);
-            }
-
             // Ensure final high-quality rendering after layout (use RAF to wait for layout)
             requestAnimationFrame(() =>
                 this.updatePreviewCanvas(previewCanvas, canvas, wrapper),
@@ -168,13 +142,6 @@ export class SlicePreview extends Hideable {
         );
         if (infoEl) {
             infoEl.textContent = "";
-        }
-
-        // remove resize observers
-        if (this.resizeObserver) {
-            this.wrapperMap.forEach((_, wrapper) => {
-                this.resizeObserver!.unobserve(wrapper);
-            });
         }
 
         this.wrapperMap = new Map();

@@ -18,7 +18,7 @@ export type ErrorCallback = (message: string) => void;
 export class ImageUploader extends Hideable {
     private fileInput: HTMLInputElement;
     private onImageLoad: ImageLoadCallback;
-    private onError: ErrorCallback;
+    private onError?: ErrorCallback;
     private selectorClasses = {
         uploadZone: "upload-zone",
         uploadIcon: "upload-icon",
@@ -36,7 +36,7 @@ export class ImageUploader extends Hideable {
     constructor(
         container: HTMLElement,
         onImageLoad: ImageLoadCallback,
-        onError: ErrorCallback,
+        onError?: ErrorCallback,
     ) {
         super(container);
         this.onImageLoad = onImageLoad;
@@ -220,7 +220,7 @@ export class ImageUploader extends Hideable {
             errorEl.textContent = message;
             errorEl.classList.add(this.selectorClasses.visible);
         }
-        this.onError(message);
+        this.onError?.(message);
     }
 
     private setLoading(loading: boolean): void {
