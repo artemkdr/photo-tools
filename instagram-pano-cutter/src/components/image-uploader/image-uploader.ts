@@ -1,13 +1,5 @@
-import {
-    isHeicMimeType,
-    isSupportedExtension,
-    isSupportedImageType,
-    isTiffMimeType,
-    SUPPORTED_EXTENSIONS,
-    type ICanvasFactory,
-} from "../../types";
+import { SUPPORTED_EXTENSIONS } from "../../types";
 import { Hideable } from "../hideable";
-import { convertToBlob } from "./converters/default";
 
 export type ImageLoadCallback = (image: HTMLImageElement, file: File) => void;
 export type ErrorCallback = (message: string) => void;
@@ -32,7 +24,6 @@ export class ImageUploader extends Hideable {
         uploaderSpinner: "uploader-spinner",
     };
     private isLoading = false;
-    private canvasFactory?: ICanvasFactory;
     private config: {
         quality?: number; // 0 to 1
         format?: "image/jpeg" | "image/png" | "image/webp";
@@ -55,11 +46,9 @@ export class ImageUploader extends Hideable {
             maxWidth: 5000,
             maxHeight: 5000,
         },
-        canvasFactory?: ICanvasFactory,
     ) {
         super(container);
         this.config = config;
-        this.canvasFactory = canvasFactory;
         this.onImageLoad = onImageLoad;
         this.onError = onError;
         this.element = this.render();
@@ -167,92 +156,50 @@ export class ImageUploader extends Hideable {
         this.clearError();
         this.setLoading(true);
 
-        // Validate file type
-        // Allow some RAW/HEIC/TIFF extensions to pass here so we can attempt conversion
-        const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
-        const isHeic = isHeicMimeType(ext);
-        const isTiff = isTiffMimeType(ext);
-        if (
-            !isHeic &&
-            !isTiff &&
-            !isSupportedImageType(file.type) &&
-            !isSupportedExtension(file.name)
-        ) {
-            const ext = file.name
-                .slice(file.name.lastIndexOf("."))
-                .toLowerCase();
-            this.showError(
-                `Unsupported format "${ext}". Please use: ${SUPPORTED_EXTENSIONS.join(", ")}`,
-            );
-            this.setLoading(false);
-            return;
-        }
-
+        // use worker-based converter
         try {
-            let processedFile: File | Blob = file;
-
-            if (isHeic) {
-                // import dynamically to reduce initial bundle size
-                const { convertHeicToBlob } = await import("./converters/heic");
-                processedFile = await convertHeicToBlob(
-                    file,
-                    {
-                        quality: this.config.quality,
-                        format: this.config.format,
-                        maxWidth: this.config.maxWidth,
-                        maxHeight: this.config.maxHeight,
-                    },
-                    (_) => {
-                        this.showError(
-                            "Failed to decode HEIC. Try converting the file to JPEG/PNG using your OS or an online tool.",
-                        );
-                    },
-                    this.canvasFactory,
+            const worker = new Worker(
+                new URL("./converters/worker.ts", import.meta.url),
+                { type: "module" },
+            );
+            worker.postMessage({
+                type: "convert",
+                file,
+                config: this.config,
+            });
+            worker.onmessage = async (event: MessageEvent) => {
+                const data = event.data as
+                    | { success: true; type: "convert"; blob: Blob }
+                    | { success: false; type: "convert"; error: string };
+                if (data.success && data.type === "convert") {
+                    try {
+                        const img = await this.loadImage(data.blob);
+                        this.onImageLoad(img, file);
+                    } catch {
+                        this.showError("Failed to load converted image.");
+                    }
+                } else if (!data.success && data.type === "convert") {
+                    this.showError(
+                        `Image conversion failed: ${data.error}. The file may be corrupted or not supported.`,
+                    );
+                }
+                worker.terminate();
+                this.setLoading(false);
+            };
+            worker.onerror = (e) => {
+                this.showError(
+                    `Image conversion failed: ${e.message}. The file may be corrupted or not supported.`,
                 );
-            } else if (isTiff) {
-                // import dynamically to reduce initial bundle size
-                const { convertTiffToBlob } = await import("./converters/tiff");
-                processedFile = await convertTiffToBlob(
-                    file,
-                    {
-                        quality: this.config.quality,
-                        format: this.config.format,
-                        maxWidth: this.config.maxWidth,
-                        maxHeight: this.config.maxHeight,
-                    },
-                    (_) => {
-                        this.showError(
-                            "Failed to decode TIFF. Try converting the file to JPEG/PNG using a tool.",
-                        );
-                    },
-                    this.canvasFactory,
-                );
-            } else {
-                // convert to image/webp, 0.95 quality to reduce size and improve loading
-                processedFile = await convertToBlob(
-                    file,
-                    {
-                        quality: this.config.quality,
-                        format: this.config.format,
-                        maxWidth: this.config.maxWidth,
-                        maxHeight: this.config.maxHeight,
-                    },
-                    (_) => {
-                        this.showError(
-                            "Failed to decode TIFF. Try converting the file to JPEG/PNG using a tool.",
-                        );
-                    },
-                    this.canvasFactory,
-                );
-            }
-            const img = await this.loadImage(processedFile as File);
-            this.onImageLoad(img, file);
+                worker.terminate();
+                this.setLoading(false);
+            };
         } catch {
             this.showError(
-                "Failed to load image. The file may be corrupted or not supported.",
+                "Failed to load image. The file may be corrupted or the format is not supported.",
             );
         }
-        this.setLoading(false);
+
+        //this.setLoading(false);
     }
 
     private loadImage(file: File | Blob): Promise<HTMLImageElement> {

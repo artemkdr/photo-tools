@@ -1,9 +1,9 @@
-import UTIF from "utif2";
+import decode from "heic-decode";
 import { dataToCanvas } from "./data-to-canvas";
-import type { ICanvasFactory } from "./types";
+import type { ICanvasFactory } from "./../types";
 
-// Convert TIFF to a browser image using UTIF library
-export async function convertTiffToBlob(
+// Convert HEIC to a browser-friendly blob using heic2any (WASM). Returns a Blob (image/jpeg by default).
+export async function convertHeicToBlob(
     file: File,
     config: {
         quality?: number; // 0 to 1
@@ -14,20 +14,19 @@ export async function convertTiffToBlob(
         quality: 0.95,
         format: "image/webp",
     },
-    onError?: (error: unknown) => void,
     canvasFactory?: ICanvasFactory,
 ): Promise<Blob> {
     try {
-        const buffer = await file.arrayBuffer();
-        const ifds = UTIF.decode(buffer);
-        const first = ifds[0];
-        UTIF.decodeImage(buffer, first);
-        const rgba = UTIF.toRGBA8(first);
+        // heic-decode exports a `decode` function which accepts ArrayBuffer/Uint8Array
+        const buffer = new Uint8Array(
+            await file.arrayBuffer(),
+        ) as unknown as ArrayBufferLike;
+        const { width, height, data } = await decode({ buffer });
 
-        const width = first.width;
-        const height = first.height;
+        if (!width || !height || !data)
+            throw new Error("Invalid HEIC decode result");
 
-        const canvas = dataToCanvas(rgba, width, height, config, canvasFactory);
+        const canvas = dataToCanvas(data, width, height, config, canvasFactory);
 
         const result = await new Promise<Blob>((resolve, reject) => {
             return canvas
@@ -46,7 +45,6 @@ export async function convertTiffToBlob(
         canvasFactory?.clearCanvas(canvas);
         return result;
     } catch (e) {
-        onError?.(e);
-        throw e;
+        return Promise.reject(e);
     }
 }

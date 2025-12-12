@@ -1,4 +1,4 @@
-import type { ICanvasFactory } from "./types";
+import type { ICanvasFactory } from "../types";
 
 export function dataToCanvas(
     data: ArrayBuffer | Uint8Array | Uint8ClampedArray<ArrayBufferLike>,
@@ -34,8 +34,8 @@ export function dataToCanvas(
 
     // resize the data into target dimensions
     const tmpCanvas = canvasFactory
-        ? canvasFactory.getCanvas(width, height, "converter-tmp")
-        : document.createElement("canvas");
+        ? canvasFactory.getOffscreenCanvas(width, height, "converter-tmp")
+        : new OffscreenCanvas(width, height);
     if (canvasFactory) {
         canvasFactory.clearCanvas(tmpCanvas);
     }

@@ -1,9 +1,7 @@
-import decode from "heic-decode";
 import { dataToCanvas } from "./data-to-canvas";
-import type { ICanvasFactory } from "./types";
+import type { ICanvasFactory } from ".././types";
 
-// Convert HEIC to a browser-friendly blob using heic2any (WASM). Returns a Blob (image/jpeg by default).
-export async function convertHeicToBlob(
+export async function convertDefaultToBlob(
     file: File,
     config: {
         quality?: number; // 0 to 1
@@ -14,21 +12,21 @@ export async function convertHeicToBlob(
         quality: 0.95,
         format: "image/webp",
     },
-    onError?: (error: unknown) => void,
     canvasFactory?: ICanvasFactory,
 ): Promise<Blob> {
     try {
-        // heic-decode exports a `decode` function which accepts ArrayBuffer/Uint8Array
-        const buffer = new Uint8Array(
-            await file.arrayBuffer(),
-        ) as unknown as ArrayBufferLike;
-        const { width, height, data } = await decode({ buffer });
-
-        if (!width || !height || !data)
-            throw new Error("Invalid HEIC decode result");
+        const imgBitmap = await createImageBitmap(file);
+        const width = imgBitmap.width;
+        const height = imgBitmap.height;
+        // convert imgBitmap to buffer array
+        const offscreenCanvas = new OffscreenCanvas(width, height);
+        const ctx = offscreenCanvas.getContext("2d");
+        if (!ctx) throw new Error("Failed to create OffscreenCanvas context");
+        ctx.drawImage(imgBitmap, 0, 0, width, height);
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const data = imageData.data.buffer;
 
         const canvas = dataToCanvas(data, width, height, config, canvasFactory);
-
         const result = await new Promise<Blob>((resolve, reject) => {
             return canvas
                 .convertToBlob({
@@ -46,7 +44,6 @@ export async function convertHeicToBlob(
         canvasFactory?.clearCanvas(canvas);
         return result;
     } catch (e) {
-        onError?.(e);
-        throw e;
+        return Promise.reject(e);
     }
 }

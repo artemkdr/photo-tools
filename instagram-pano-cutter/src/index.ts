@@ -88,7 +88,6 @@ class App {
                 maxWidth: 5000,
                 maxHeight: 5000,
             },
-            this.canvasFactory,
         );
 
         // Initialize control panel
