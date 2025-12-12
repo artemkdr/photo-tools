@@ -3,14 +3,16 @@ import { Hideable } from "../hideable";
 
 export type ImageLoadCallback = (image: HTMLImageElement, file: File) => void;
 export type ErrorCallback = (message: string) => void;
+export type StartCallback = (file: File) => void;
 
 /**
  * Image uploader component with drag-drop and file input support
  */
 export class ImageUploader extends Hideable {
     private fileInput: HTMLInputElement;
-    private onImageLoad: ImageLoadCallback;
+    private onImageLoad?: ImageLoadCallback;
     private onError?: ErrorCallback;
+    private onStart?: StartCallback;
     private selectorClasses = {
         uploadZone: "upload-zone",
         uploadIcon: "upload-icon",
@@ -33,8 +35,6 @@ export class ImageUploader extends Hideable {
 
     constructor(
         container: HTMLElement,
-        onImageLoad: ImageLoadCallback,
-        onError?: ErrorCallback,
         config: {
             quality?: number; // 0 to 1
             format?: "image/jpeg" | "image/png" | "image/webp";
@@ -46,11 +46,17 @@ export class ImageUploader extends Hideable {
             maxWidth: 5000,
             maxHeight: 5000,
         },
+        handlers: {
+            onStart?: () => void;
+            onImageLoad?: ImageLoadCallback;
+            onError?: ErrorCallback;
+        },
     ) {
         super(container);
         this.config = config;
-        this.onImageLoad = onImageLoad;
-        this.onError = onError;
+        this.onImageLoad = handlers.onImageLoad;
+        this.onError = handlers.onError;
+        this.onStart = handlers.onStart;
         this.element = this.render();
         this.fileInput = this.element.querySelector('input[type="file"]')!;
         container.appendChild(this.element);
@@ -154,6 +160,7 @@ export class ImageUploader extends Hideable {
 
     private async handleFile(file: File): Promise<void> {
         this.clearError();
+        this.onStart?.(file);
         this.setLoading(true);
 
         // use worker-based converter
@@ -174,7 +181,7 @@ export class ImageUploader extends Hideable {
                 if (data.success && data.type === "convert") {
                     try {
                         const img = await this.loadImage(data.blob);
-                        this.onImageLoad(img, file);
+                        this.onImageLoad?.(img, file);
                     } catch {
                         this.showError("Failed to load converted image.");
                     }

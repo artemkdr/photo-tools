@@ -76,17 +76,25 @@ class App {
         const uploaderContainer = this.getUploadContainer();
         this.uploader = new ImageUploader(
             uploaderContainer,
-            (image: HTMLImageElement, file: File) => {
-                this.handleImageLoad(image, file);
-            },
-            (_) => {
-                // console.error("Uploader error:", error);
-            },
             {
                 quality: 0.95,
                 format: "image/webp",
                 maxWidth: 5000,
                 maxHeight: 5000,
+            },
+            {
+                onStart: () => {
+                    // reset current image and file
+                    this.currentImage = null;
+                    this.currentFile = null;
+                    this.updateUI(false);
+                },
+                onImageLoad: (image: HTMLImageElement, file: File) => {
+                    this.handleImageLoad(image, file);
+                },
+                onError: (_) => {
+                    // console.error("Uploader error:", error);
+                },
             },
         );
 
@@ -165,7 +173,7 @@ class App {
         this.processImage();
 
         // update UI visibility
-        this.updateUI();
+        this.updateUI(true);
 
         // Fallback for browsers that don't support :has(): toggle a class on root
         // so CSS can target `.app-container.has-image` as a substitute for :has().
@@ -176,18 +184,26 @@ class App {
         }
     }
 
-    private updateUI(): void {
-        // minimize uploader
-        this.uploader.minimize();
+    private updateUI(imageUploaded: boolean): void {
+        if (!imageUploaded) {
+            // hide all panels
+            this.controlPanel.hide();
+            this.slicePreview.hide();
+            this.downloadPanel.hide();
+            return;
+        } else {
+            // minimize uploader
+            this.uploader.minimize();
 
-        // Show control panel
-        this.controlPanel.show();
+            // Show control panel
+            this.controlPanel.show();
 
-        // Show preview
-        this.slicePreview.show();
+            // Show preview
+            this.slicePreview.show();
 
-        // Show download panel
-        this.downloadPanel.show();
+            // Show download panel
+            this.downloadPanel.show();
+        }
     }
 
     private readonly throttlerProcessImage = throttleWithDebounce(() => {
