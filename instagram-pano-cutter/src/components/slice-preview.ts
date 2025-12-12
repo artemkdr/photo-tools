@@ -58,7 +58,7 @@ export class SlicePreview extends Hideable {
     /**
      * Update the preview with new slices
      */
-    public updateSlices(slices: HTMLCanvasElement[]): void {
+    public updateSlices(slices: OffscreenCanvas[]): void {
         // destroy previous slices properly for memory management
         this.clear();
 
@@ -290,7 +290,7 @@ export class SlicePreview extends Hideable {
      */
     private updatePreviewCanvas(
         previewCanvas: HTMLCanvasElement,
-        sourceCanvas: HTMLCanvasElement,
+        sourceCanvas: OffscreenCanvas,
         wrapper: HTMLElement,
     ) {
         // check if wrapper is still in DOM

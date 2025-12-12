@@ -1,3 +1,5 @@
+import type { ICanvasFactory } from "./types";
+
 export function dataToCanvas(
     data: ArrayBuffer | Uint8Array | Uint8ClampedArray<ArrayBufferLike>,
     width: number,
@@ -6,19 +8,11 @@ export function dataToCanvas(
         maxWidth?: number;
         maxHeight?: number;
     },
-    canvasFactory?: {
-        getCanvas: (
-            width: number,
-            height: number,
-            key?: string,
-        ) => HTMLCanvasElement;
-        clearCanvas: (canvas: HTMLCanvasElement) => void;
-        disposeCanvas: (canvas: HTMLCanvasElement) => void;
-    },
-) {
+    canvasFactory?: ICanvasFactory,
+): OffscreenCanvas {
     const canvas = canvasFactory
-        ? canvasFactory.getCanvas(width, height, "converter")
-        : document.createElement("canvas");
+        ? canvasFactory.getOffscreenCanvas(width, height, "converter")
+        : new OffscreenCanvas(width, height);
     if (canvasFactory) {
         canvasFactory.clearCanvas(canvas);
     }

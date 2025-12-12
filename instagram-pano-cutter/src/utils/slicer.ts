@@ -32,8 +32,8 @@ export function sliceImage(
     let sliceHeight = imageHeight;
     let sliceCount = Math.ceil(imageWidth / sliceWidth);
 
-    const slices: HTMLCanvasElement[] = [];
-    const adjustedCanvas = canvasFactory.getCanvas(
+    const slices: OffscreenCanvas[] = [];
+    const adjustedCanvas = canvasFactory.getOffscreenCanvas(
         1,
         1,
         "slicer-adjusted-canvas",
@@ -171,7 +171,7 @@ function buildSourceCanvas(
     config: SliceConfig,
     image: HTMLImageElement,
     canvasFactory: ICanvasFactory,
-): HTMLCanvasElement {
+): OffscreenCanvas {
     const { manualPaddingX, manualPaddingY } = config;
 
     // add one at each side
@@ -181,7 +181,11 @@ function buildSourceCanvas(
     const paddedWidth = image.naturalWidth + paddingX;
     const paddedHeight = image.naturalHeight + paddingY;
 
-    const canvas = canvasFactory.getCanvas(1, 1, "slicer-source-canvas");
+    const canvas = canvasFactory.getOffscreenCanvas(
+        1,
+        1,
+        "slicer-source-canvas",
+    );
     canvasFactory.clearCanvas(canvas);
     canvas.width = paddedWidth;
     canvas.height = paddedHeight;
@@ -208,8 +212,8 @@ function createFullSlice(
     sourceHeight: number,
     targetDimensions: { width: number; height: number },
     index = 0,
-): HTMLCanvasElement {
-    const canvas = canvasFactory.getCanvas(
+): OffscreenCanvas {
+    const canvas = canvasFactory.getOffscreenCanvas(
         targetDimensions.width,
         targetDimensions.height,
         `slicer-full-slice-${index}`,

@@ -2,18 +2,17 @@
  * Download a single canvas as an image file
  */
 export function downloadCanvas(
-    canvas: HTMLCanvasElement,
+    canvas: OffscreenCanvas,
     filename: string,
     format: "image/png" | "image/jpeg" = "image/png",
 ): Promise<void> {
     return new Promise((resolve, reject) => {
-        canvas.toBlob(
-            (blob) => {
-                if (!blob) {
-                    reject(new Error("Failed to create blob from canvas"));
-                    return;
-                }
-
+        return canvas
+            .convertToBlob({
+                type: format,
+                quality: 0.95,
+            })
+            .then((blob) => {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = url;
@@ -23,10 +22,12 @@ export function downloadCanvas(
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
                 resolve();
-            },
-            format,
-            0.95,
-        );
+            })
+            .catch((_) => {
+                reject(
+                    new Error("Failed to create downloadable data from canvas"),
+                );
+            });
     });
 }
 
@@ -34,7 +35,7 @@ export function downloadCanvas(
  * Download a single slice
  */
 export function downloadSlice(
-    canvas: HTMLCanvasElement,
+    canvas: OffscreenCanvas,
     index: number,
     baseName: string = "slide",
 ): Promise<void> {
@@ -54,7 +55,7 @@ function delay(ms: number): Promise<void> {
  * to prevent browser blocking
  */
 export async function downloadAllSlices(
-    canvases: HTMLCanvasElement[],
+    canvases: OffscreenCanvas[],
     baseName: string = "slide",
     delayMs: number = 150,
 ): Promise<void> {

@@ -2,6 +2,7 @@ import type { ICanvasFactory } from "../types";
 
 export class CanvasFactory implements ICanvasFactory {
     private canvasPool: Map<string, HTMLCanvasElement> = new Map();
+    private offscreenCanvasPool: Map<string, OffscreenCanvas> = new Map();
     private attributeKey = "data-canvas-key";
 
     public getCanvas(
@@ -9,7 +10,7 @@ export class CanvasFactory implements ICanvasFactory {
         height: number,
         key?: string,
     ): HTMLCanvasElement {
-        const mapKey = key || `${width}x${height}`;
+        const mapKey = key || `${Math.random().toString(36).substring(2, 11)}`;
         let canvas = this.canvasPool.get(mapKey);
         if (!canvas) {
             canvas = document.createElement("canvas");
@@ -21,7 +22,24 @@ export class CanvasFactory implements ICanvasFactory {
         return canvas;
     }
 
-    public clearCanvas(canvas: HTMLCanvasElement): void {
+    public getOffscreenCanvas(
+        width: number,
+        height: number,
+        key?: string,
+    ): OffscreenCanvas {
+        const mapKey = key || `${Math.random().toString(36).substring(2, 11)}`;
+        let canvas = this.offscreenCanvasPool.get(mapKey);
+        if (!canvas) {
+            const offscreenCanvas = new OffscreenCanvas(width, height);
+            offscreenCanvas.width = width;
+            offscreenCanvas.height = height;
+            this.offscreenCanvasPool.set(mapKey, offscreenCanvas);
+            canvas = offscreenCanvas;
+        }
+        return canvas;
+    }
+
+    public clearCanvas(canvas: HTMLCanvasElement | OffscreenCanvas): void {
         // Optionally clear the canvas before releasing
         const ctx = canvas.getContext("2d");
         if (ctx) {
@@ -29,11 +47,16 @@ export class CanvasFactory implements ICanvasFactory {
         }
     }
 
-    public disposeCanvas(canvas: HTMLCanvasElement): void {
-        const key = canvas.getAttribute(this.attributeKey) || "";
-        const mapKey = key || `${canvas.width}x${canvas.height}`;
-        if (this.canvasPool.has(mapKey)) {
-            this.canvasPool.delete(mapKey);
-        }
+    public disposeCanvas(canvas: HTMLCanvasElement | OffscreenCanvas): void {
+        this.canvasPool.forEach((value, key) => {
+            if (value === canvas) {
+                this.canvasPool.delete(key);
+            }
+        });
+        this.offscreenCanvasPool.forEach((value, key) => {
+            if (value === canvas) {
+                this.offscreenCanvasPool.delete(key);
+            }
+        });
     }
 }

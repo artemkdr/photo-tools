@@ -4,10 +4,16 @@
 export interface ICanvasFactory {
     /** Get/Create a new canvas with specified width and height */
     getCanvas(width: number, height: number, key?: string): HTMLCanvasElement;
+    /** Get/Create a new offscreen canvas with specified width and height */
+    getOffscreenCanvas(
+        width: number,
+        height: number,
+        key?: string,
+    ): OffscreenCanvas;
     /** Clean up a canvas (e.g., clear its contents) */
-    clearCanvas(canvas: HTMLCanvasElement): void;
+    clearCanvas(canvas: HTMLCanvasElement | OffscreenCanvas): void;
     /** Dispose of a canvas (optional cleanup) */
-    disposeCanvas(canvas: HTMLCanvasElement): void;
+    disposeCanvas(canvas: HTMLCanvasElement | OffscreenCanvas): void;
 }
 
 /**
@@ -57,7 +63,7 @@ export const INSTAGRAM_DIMENSIONS: Record<
  */
 export interface SliceResult {
     /** Array of canvas elements, one per slice */
-    slices: HTMLCanvasElement[];
+    slices: OffscreenCanvas[];
     /** Number of slices created */
     sliceCount: number;
     /** Width of each slice in pixels */

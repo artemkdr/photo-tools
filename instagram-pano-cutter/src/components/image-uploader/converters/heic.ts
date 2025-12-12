@@ -1,5 +1,6 @@
 import decode from "heic-decode";
 import { dataToCanvas } from "./data-to-canvas";
+import type { ICanvasFactory } from "./types";
 
 // Convert HEIC to a browser-friendly blob using heic2any (WASM). Returns a Blob (image/jpeg by default).
 export async function convertHeicToBlob(
@@ -14,15 +15,7 @@ export async function convertHeicToBlob(
         format: "image/webp",
     },
     onError?: (error: unknown) => void,
-    canvasFactory?: {
-        getCanvas: (
-            width: number,
-            height: number,
-            key?: string,
-        ) => HTMLCanvasElement;
-        clearCanvas: (canvas: HTMLCanvasElement) => void;
-        disposeCanvas: (canvas: HTMLCanvasElement) => void;
-    },
+    canvasFactory?: ICanvasFactory,
 ): Promise<Blob> {
     try {
         // heic-decode exports a `decode` function which accepts ArrayBuffer/Uint8Array
@@ -37,14 +30,17 @@ export async function convertHeicToBlob(
         const canvas = dataToCanvas(data, width, height, config, canvasFactory);
 
         const result = await new Promise<Blob>((resolve, reject) => {
-            canvas.toBlob(
-                (b) => {
-                    if (b) resolve(b);
-                    else reject(new Error("Canvas toBlob failed"));
-                },
-                config.format,
-                config.quality,
-            );
+            return canvas
+                .convertToBlob({
+                    type: config.format,
+                    quality: config.quality,
+                })
+                .then((b) => {
+                    resolve(b);
+                })
+                .catch((e) => {
+                    reject(e);
+                });
         });
         // clean up canvas
         canvasFactory?.clearCanvas(canvas);

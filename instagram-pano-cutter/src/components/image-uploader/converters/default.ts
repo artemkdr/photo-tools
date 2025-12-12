@@ -1,4 +1,5 @@
 import { dataToCanvas } from "./data-to-canvas";
+import type { ICanvasFactory } from "./types";
 
 export async function convertToBlob(
     file: File,
@@ -12,15 +13,7 @@ export async function convertToBlob(
         format: "image/webp",
     },
     onError?: (error: unknown) => void,
-    canvasFactory?: {
-        getCanvas: (
-            width: number,
-            height: number,
-            key?: string,
-        ) => HTMLCanvasElement;
-        clearCanvas: (canvas: HTMLCanvasElement) => void;
-        disposeCanvas: (canvas: HTMLCanvasElement) => void;
-    },
+    canvasFactory?: ICanvasFactory,
 ): Promise<Blob> {
     try {
         const imgBitmap = await createImageBitmap(file);
@@ -36,14 +29,17 @@ export async function convertToBlob(
 
         const canvas = dataToCanvas(data, width, height, config, canvasFactory);
         const result = await new Promise<Blob>((resolve, reject) => {
-            canvas.toBlob(
-                (b) => {
-                    if (b) resolve(b);
-                    else reject(new Error("Canvas toBlob failed"));
-                },
-                config.format,
-                config.quality,
-            );
+            return canvas
+                .convertToBlob({
+                    type: config.format,
+                    quality: config.quality,
+                })
+                .then((b) => {
+                    resolve(b);
+                })
+                .catch((e) => {
+                    reject(e);
+                });
         });
         // clean up canvas
         canvasFactory?.clearCanvas(canvas);
