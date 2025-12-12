@@ -648,6 +648,41 @@ a {
     box-sizing: border-box;
 }
 
+/* Dots below the preview grid (Instagram-style pagination) */
+.preview-dots {
+    display: flex;
+    gap: var(--spacing-xs);
+    justify-content: center;
+    align-items: center;
+    padding-top: var(--spacing-sm);
+}
+
+.preview-dot {
+    width: 10px;
+    height: 10px;
+    background-color: var(--color-text-tertiary);
+    border-radius: 50%;
+    opacity: 0.6;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    transition:
+        transform var(--transition-fast),
+        opacity var(--transition-fast),
+        background-color var(--transition-fast);
+}
+
+.preview-dot:focus {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+}
+
+.preview-dot--active {
+    transform: scale(1.3);
+    background-color: var(--color-accent);
+    opacity: 1;
+}
+
 .preview-item {
     display: flex;
     flex-direction: column;

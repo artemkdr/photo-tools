@@ -21,8 +21,15 @@ export class SlicePreview extends Hideable {
         previewInfo: "preview-info",
         previewItem: "preview-item",
         previewLabel: "preview-label",
+        previewDots: "preview-dots",
+        previewDot: "preview-dot",
+        previewDotActive: "preview-dot--active",
     };
     private canvasFactory: ICanvasFactory;
+    private dotContainer?: HTMLElement;
+    private dotMap: Map<HTMLElement, HTMLElement> = new Map();
+    private intersectionObserver?: IntersectionObserver;
+    private initRequestedAnimationFrameId?: number;
 
     constructor(container: HTMLElement, canvasFactory: ICanvasFactory) {
         super(container);
@@ -43,6 +50,7 @@ export class SlicePreview extends Hideable {
                     <p class="${this.selectorClasses.previewInfo}"></p>
                 </div>
                 <div class="${this.selectorClasses.previewGrid}"></div>
+                <div class="${this.selectorClasses.previewDots}" role="tablist" aria-label="Slides"></div>
                 `;
         return el;
     }
@@ -99,14 +107,20 @@ export class SlicePreview extends Hideable {
                 );
             }
 
-            // Create and append label
-            const label = document.createElement("span");
-            label.className = this.selectorClasses.previewLabel;
-            label.textContent = `${index + 1} / ${slices.length}`;
-
             // Append wrapper first so it participates in layout and we can measure its CSS size
             wrapper.appendChild(previewCanvas);
-            wrapper.appendChild(label);
+            // Create dot for this slide and keep it in map (append later after cap)
+            const dot = document.createElement("button");
+            dot.type = "button";
+            dot.className = this.selectorClasses.previewDot;
+            dot.setAttribute("role", "tab");
+            dot.setAttribute("aria-selected", "false");
+            dot.setAttribute(
+                "aria-label",
+                `Slide ${index + 1} of ${slices.length}`,
+            );
+            this.dotMap.set(wrapper, dot);
+            this.previewContainer.appendChild(wrapper);
             this.previewContainer.appendChild(wrapper);
 
             // Ensure final high-quality rendering after layout (use RAF to wait for layout)
@@ -121,6 +135,33 @@ export class SlicePreview extends Hideable {
             });
         });
 
+        // Render dots: cap to 20
+        const maxDots = 20;
+        const dotsToShow = Math.min(slices.length, maxDots);
+        this.dotContainer = this.element.querySelector(
+            `.${this.selectorClasses.previewDots}`,
+        ) as HTMLElement;
+        if (this.dotContainer) {
+            this.dotContainer.innerHTML = "";
+            let i = 0;
+            for (const [wrapper, dot] of this.dotMap) {
+                if (i >= dotsToShow) break;
+                // update aria label reflecting total count
+                dot.setAttribute(
+                    "aria-label",
+                    `Slide ${i + 1} of ${slices.length}`,
+                );
+                dot.addEventListener("click", () => {
+                    wrapper.scrollIntoView({
+                        behavior: "smooth",
+                        inline: "start",
+                    });
+                });
+                this.dotContainer.appendChild(dot);
+                i++;
+            }
+        }
+
         // Update info text
         const infoEl = this.element.querySelector(
             `.${this.selectorClasses.previewInfo}`,
@@ -134,12 +175,22 @@ export class SlicePreview extends Hideable {
         // reset preview grid scroll position
         this.previewContainer.scrollLeft = 0;
         this.previewContainer.scrollTop = 0;
+
+        // Setup intersection observer to highlight active dot and hide dots when all visible
+        this.initRequestedAnimationFrameId = requestAnimationFrame(() => {
+            this.setupIntersectionObserver();
+        });
     }
 
     /**
      * Clear all previews
      */
     private clear(): void {
+        // clear init RAF
+        if (this.initRequestedAnimationFrameId !== undefined) {
+            cancelAnimationFrame(this.initRequestedAnimationFrameId);
+            this.initRequestedAnimationFrameId = undefined;
+        }
         // clear wrappers
         this.wrapperMap.forEach((value, wrapper) => {
             wrapper.innerHTML = "";
@@ -156,11 +207,80 @@ export class SlicePreview extends Hideable {
         this.previewContainer.innerHTML = "";
         this.element.classList.remove("has-slices");
 
+        // clear dots
+        if (this.dotContainer) {
+            this.dotContainer.innerHTML = "";
+        }
+        this.dotMap.forEach((dot) => {
+            // remove any listeners by cloning
+            const newDot = dot.cloneNode(true) as HTMLElement;
+            dot.replaceWith(newDot);
+        });
+        this.dotMap.clear();
+
+        // disconnect observer
+        if (this.intersectionObserver) {
+            this.intersectionObserver.disconnect();
+            this.intersectionObserver = undefined;
+        }
+
         const infoEl = this.element.querySelector(
             `.${this.selectorClasses.previewInfo}`,
         );
         if (infoEl) {
             infoEl.textContent = "";
+        }
+    }
+
+    private setupIntersectionObserver(): void {
+        // teardown any existing observer
+        if (this.intersectionObserver) {
+            this.intersectionObserver.disconnect();
+        }
+
+        // if no dot container or no items, nothing to observe
+        if (!this.dotContainer) return;
+
+        // Hide dots when all items fit inside container (no overflow)
+        const shouldHideDots =
+            this.previewContainer.scrollWidth <=
+            this.previewContainer.clientWidth;
+        if (shouldHideDots) {
+            this.dotContainer.style.display = "none";
+            return;
+        } else {
+            this.dotContainer.style.display = "flex";
+        }
+
+        const options: IntersectionObserverInit = {
+            root: this.previewContainer,
+            rootMargin: "0px",
+            threshold: [0.5], // consider active when >=50% visible
+        };
+
+        this.intersectionObserver = new IntersectionObserver((entries) => {
+            // For each entry, if it's at least half visible mark corresponding dot active
+            entries.forEach((entry) => {
+                const target = entry.target as HTMLElement;
+                const dot = this.dotMap.get(target);
+                if (!dot) return;
+                if (entry.intersectionRatio >= 0.5) {
+                    dot.classList.add(this.selectorClasses.previewDotActive);
+                    dot.setAttribute("aria-selected", "true");
+                } else {
+                    dot.classList.remove(this.selectorClasses.previewDotActive);
+                    dot.setAttribute("aria-selected", "false");
+                }
+            });
+        }, options);
+
+        // observe wrappers in the order they exist in wrapperMap
+        for (const wrapper of this.wrapperMap.keys()) {
+            try {
+                this.intersectionObserver.observe(wrapper);
+            } catch (_) {
+                // ignore observation failures for detached nodes
+            }
         }
     }
 
