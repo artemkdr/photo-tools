@@ -243,8 +243,9 @@ export class SlicePreview extends Hideable {
 
         // Hide dots when all items fit inside container (no overflow)
         const shouldHideDots =
-            this.previewContainer.scrollWidth <=
-            this.previewContainer.clientWidth;
+            this.previewContainer.scrollWidth /
+                this.previewContainer.clientWidth <=
+            1.5;
         if (shouldHideDots) {
             this.dotContainer.style.display = "none";
             return;

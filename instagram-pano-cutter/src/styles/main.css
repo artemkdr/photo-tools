@@ -644,7 +644,7 @@ a {
     flex-wrap: nowrap;
     gap: var(--spacing-sm);
     overflow-x: auto;
-    max-width: 100%;
+    max-width: 48rem;
     box-sizing: border-box;
 }
 
@@ -711,6 +711,7 @@ a {
     .preview-grid {
         display: flex;
         flex-direction: row;
+        max-width: 100%;
         gap: var(--spacing-sm);
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
