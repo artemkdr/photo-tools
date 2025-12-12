@@ -43,7 +43,9 @@ export class CanvasFactory implements ICanvasFactory {
         // Optionally clear the canvas before releasing
         const ctx = canvas.getContext("2d");
         if (ctx) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if ("clearRect" in ctx) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
         }
     }
 
