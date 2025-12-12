@@ -1,9 +1,9 @@
 import {
+    type ICanvasFactory,
     type SliceConfig,
     type SliceResult,
     INSTAGRAM_DIMENSIONS,
 } from "../types";
-import { CanvasFactory } from "./canvas-factory";
 import { getOptimalCropping } from "./get-optimal-cropping";
 
 /**
@@ -12,11 +12,12 @@ import { getOptimalCropping } from "./get-optimal-cropping";
 export function sliceImage(
     image: HTMLImageElement,
     config: SliceConfig,
+    canvasFactory: ICanvasFactory,
 ): SliceResult {
     const { aspectRatio, unevenHandling, paddingColor } = config;
     const targetDimensions = INSTAGRAM_DIMENSIONS[aspectRatio];
 
-    const sourceCanvas = buildSourceCanvas(config, image);
+    const sourceCanvas = buildSourceCanvas(config, image, canvasFactory);
 
     const imageWidth = sourceCanvas.width;
     const imageHeight = sourceCanvas.height;
@@ -34,7 +35,7 @@ export function sliceImage(
     const slices: HTMLCanvasElement[] = [];
     let lastSliceAdjusted = false;
 
-    const adjustedCanvas = CanvasFactory.getCanvas(
+    const adjustedCanvas = canvasFactory.getCanvas(
         1,
         1,
         "slicer-adjusted-canvas",
@@ -105,6 +106,7 @@ export function sliceImage(
         const sourceY = 0;
         slices.push(
             createFullSlice(
+                canvasFactory,
                 adjustedCanvas,
                 sourceX,
                 sourceY,
@@ -129,6 +131,7 @@ export function sliceImage(
 function buildSourceCanvas(
     config: SliceConfig,
     image: HTMLImageElement,
+    canvasFactory: ICanvasFactory,
 ): HTMLCanvasElement {
     const { manualPaddingX, manualPaddingY } = config;
 
@@ -139,8 +142,8 @@ function buildSourceCanvas(
     const paddedWidth = image.naturalWidth + paddingX;
     const paddedHeight = image.naturalHeight + paddingY;
 
-    const canvas = CanvasFactory.getCanvas(1, 1, "slicer-source-canvas");
-    CanvasFactory.cleanCanvas(canvas);
+    const canvas = canvasFactory.getCanvas(1, 1, "slicer-source-canvas");
+    canvasFactory.clearCanvas(canvas);
     canvas.width = paddedWidth;
     canvas.height = paddedHeight;
 
@@ -158,6 +161,7 @@ function buildSourceCanvas(
 }
 
 function createFullSlice(
+    canvasFactory: ICanvasFactory,
     image: CanvasImageSource,
     sourceX: number,
     sourceY: number,
@@ -166,12 +170,12 @@ function createFullSlice(
     targetDimensions: { width: number; height: number },
     index = 0,
 ): HTMLCanvasElement {
-    const canvas = CanvasFactory.getCanvas(
+    const canvas = canvasFactory.getCanvas(
         targetDimensions.width,
         targetDimensions.height,
         `slicer-full-slice-${index}`,
     );
-    CanvasFactory.cleanCanvas(canvas);
+    canvasFactory.clearCanvas(canvas);
     canvas.width = targetDimensions.width;
     canvas.height = targetDimensions.height;
     const ctx = canvas.getContext("2d");

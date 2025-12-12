@@ -1,4 +1,4 @@
-import { CanvasFactory } from "../utils/canvas-factory";
+import type { ICanvasFactory } from "../types";
 import { Hideable } from "./hideable";
 
 /**
@@ -23,9 +23,11 @@ export class SlicePreview extends Hideable {
         previewItem: "preview-item",
         previewLabel: "preview-label",
     };
+    private canvasFactory: ICanvasFactory;
 
-    constructor(container: HTMLElement) {
+    constructor(container: HTMLElement, canvasFactory: ICanvasFactory) {
         super(container);
+        this.canvasFactory = canvasFactory;
         this.element = this.render();
         this.previewContainer = this.element.querySelector(
             `.${this.selectorClasses.previewGrid}`,
@@ -61,12 +63,12 @@ export class SlicePreview extends Hideable {
 
             // Create a DPR-aware scaled preview canvas so CSS scaling stays crisp.
             // Compute a target display width (in CSS pixels) — keep it moderate to save memory.
-            const previewCanvas = CanvasFactory.getCanvas(
+            const previewCanvas = this.canvasFactory.getCanvas(
                 1,
                 1,
                 `slice-preview-thumb-${index}`,
             );
-            CanvasFactory.cleanCanvas(previewCanvas);
+            this.canvasFactory.clearCanvas(previewCanvas);
             const displayMaxWidth = 200; // CSS pixels — preview thumb size
 
             // Determine scale to fit the slice into displayMaxWidth while preserving aspect ratio

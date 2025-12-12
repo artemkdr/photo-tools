@@ -4,6 +4,15 @@ import decode from "heic-decode";
 export async function convertHeicToBlob(
     file: File,
     onError?: (error: unknown) => void,
+    canvasFactory?: {
+        getCanvas: (
+            width: number,
+            height: number,
+            key?: string,
+        ) => HTMLCanvasElement;
+        clearCanvas: (canvas: HTMLCanvasElement) => void;
+        disposeCanvas: (canvas: HTMLCanvasElement) => void;
+    },
 ): Promise<Blob> {
     try {
         // heic-decode exports a `decode` function which accepts ArrayBuffer/Uint8Array
@@ -15,7 +24,12 @@ export async function convertHeicToBlob(
         if (!width || !height || !data)
             throw new Error("Invalid HEIC decode result");
 
-        const canvas = document.createElement("canvas");
+        const canvas = canvasFactory
+            ? canvasFactory.getCanvas(width, height, "converter")
+            : document.createElement("canvas");
+        if (canvasFactory) {
+            canvasFactory.clearCanvas(canvas);
+        }
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext("2d");

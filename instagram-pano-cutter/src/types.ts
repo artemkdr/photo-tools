@@ -1,4 +1,16 @@
 /**
+ * Canvas factory
+ */
+export interface ICanvasFactory {
+    /** Get/Create a new canvas with specified width and height */
+    getCanvas(width: number, height: number, key?: string): HTMLCanvasElement;
+    /** Clean up a canvas (e.g., clear its contents) */
+    clearCanvas(canvas: HTMLCanvasElement): void;
+    /** Dispose of a canvas (optional cleanup) */
+    disposeCanvas(canvas: HTMLCanvasElement): void;
+}
+
+/**
  * Instagram aspect ratio options
  */
 export type AspectRatio = "1:1" | "4:5";

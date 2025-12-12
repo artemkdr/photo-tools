@@ -1,4 +1,4 @@
-import type { SliceConfig, SliceResult, Theme } from "./types";
+import type { ICanvasFactory, SliceConfig, SliceResult, Theme } from "./types";
 import { sliceImage } from "./utils/slicer";
 import { generateBaseName } from "./utils/download";
 import { ImageUploader } from "./components/image-uploader/image-uploader";
@@ -7,6 +7,7 @@ import { SlicePreview } from "./components/slice-preview";
 import { DownloadPanel } from "./components/download-panel";
 import { ThemeToggle } from "./components/theme-toggle";
 import { debounce } from "./utils/debounce";
+import { CanvasFactory } from "./utils/canvas-factory";
 
 /**
  * Main application class
@@ -16,6 +17,7 @@ class App {
     private downloadPanel!: DownloadPanel;
     private controlPanel!: ControlPanel;
     private uploader!: ImageUploader;
+    private canvasFactory: ICanvasFactory;
 
     private currentImage: HTMLImageElement | null = null;
     private currentFile: File | null = null;
@@ -28,6 +30,29 @@ class App {
     };
 
     constructor() {
+        /**
+         * Canvas factory instance.
+         * Or use default one like:
+         * this.canvasFactory = {
+         *   getCanvas: (width, height) => {
+         *     const canvas = document.createElement("canvas");
+         *     canvas.width = width;
+         *     canvas.height = height;
+         *     return canvas;
+         *   },
+         *   clearCanvas: (canvas) => {
+         *     const ctx = canvas.getContext("2d");
+         *     if (ctx) {
+         *       ctx.clearRect(0, 0, canvas.width, canvas.height);
+         *     }
+         *   },
+         *   disposeCanvas: (canvas) => {
+         *     // Optional cleanup logic here
+         *   },
+         * };
+         */
+        this.canvasFactory = new CanvasFactory();
+
         this.init();
     }
 
@@ -43,13 +68,21 @@ class App {
         if (!themeContainer) {
             throw new Error("Theme toggle container not found");
         }
-        new ThemeToggle(themeContainer, this.handleThemeChange.bind(this));
+        new ThemeToggle(themeContainer, (theme: Theme) => {
+            this.handleThemeChange(theme);
+        });
 
         // Initialize uploader
         const uploaderContainer = this.getUploadContainer();
         this.uploader = new ImageUploader(
             uploaderContainer,
-            this.handleImageLoad.bind(this),
+            (image: HTMLImageElement, file: File) => {
+                this.handleImageLoad(image, file);
+            },
+            (_) => {
+                // console.error("Uploader error:", error);
+            },
+            this.canvasFactory,
         );
 
         // Initialize control panel
@@ -62,7 +95,9 @@ class App {
         this.controlPanel = new ControlPanel(
             controlContainer,
             this.config,
-            this.handleConfigChange.bind(this),
+            (config: SliceConfig) => {
+                this.handleConfigChange(config);
+            },
         );
         // hide control panel until an image is loaded
         this.controlPanel.hide();
@@ -72,7 +107,10 @@ class App {
         if (!previewContainer) {
             throw new Error("Preview container not found");
         }
-        this.slicePreview = new SlicePreview(previewContainer);
+        this.slicePreview = new SlicePreview(
+            previewContainer,
+            this.canvasFactory,
+        );
         // hide preview until an image is loaded
         this.slicePreview.hide();
 
@@ -171,7 +209,11 @@ class App {
         if (!this.currentImage || !this.currentFile) return;
 
         // Slice the image
-        const result = sliceImage(this.currentImage, this.config);
+        const result = sliceImage(
+            this.currentImage,
+            this.config,
+            this.canvasFactory,
+        );
 
         // Update preview
         this.slicePreview.updateSlices(result.slices);

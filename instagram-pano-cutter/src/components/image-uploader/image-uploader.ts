@@ -4,6 +4,7 @@ import {
     isSupportedImageType,
     isTiffMimeType,
     SUPPORTED_EXTENSIONS,
+    type ICanvasFactory,
 } from "../../types";
 import { Hideable } from "../hideable";
 
@@ -30,13 +31,16 @@ export class ImageUploader extends Hideable {
         uploaderSpinner: "uploader-spinner",
     };
     private isLoading = false;
+    private canvasFactory?: ICanvasFactory;
 
     constructor(
         container: HTMLElement,
         onImageLoad: ImageLoadCallback,
         onError?: ErrorCallback,
+        canvasFactory?: ICanvasFactory,
     ) {
         super(container);
+        this.canvasFactory = canvasFactory;
         this.onImageLoad = onImageLoad;
         this.onError = onError;
         this.element = this.render();
@@ -171,19 +175,27 @@ export class ImageUploader extends Hideable {
             if (isHeic) {
                 // import dynamically to reduce initial bundle size
                 const { convertHeicToBlob } = await import("./converters/heic");
-                processedFile = await convertHeicToBlob(file, (_) => {
-                    this.showError(
-                        "Failed to decode HEIC. Try converting the file to JPEG/PNG using your OS or an online tool.",
-                    );
-                });
+                processedFile = await convertHeicToBlob(
+                    file,
+                    (_) => {
+                        this.showError(
+                            "Failed to decode HEIC. Try converting the file to JPEG/PNG using your OS or an online tool.",
+                        );
+                    },
+                    this.canvasFactory,
+                );
             } else if (isTiff) {
                 // import dynamically to reduce initial bundle size
                 const { convertTiffToBlob } = await import("./converters/tiff");
-                processedFile = await convertTiffToBlob(file, (_) => {
-                    this.showError(
-                        "Failed to decode TIFF. Try converting the file to JPEG/PNG using a tool.",
-                    );
-                });
+                processedFile = await convertTiffToBlob(
+                    file,
+                    (_) => {
+                        this.showError(
+                            "Failed to decode TIFF. Try converting the file to JPEG/PNG using a tool.",
+                        );
+                    },
+                    this.canvasFactory,
+                );
             }
             const img = await this.loadImage(processedFile as File);
             this.onImageLoad(img, file);
