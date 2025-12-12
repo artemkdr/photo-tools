@@ -106,6 +106,17 @@ export class ControlPanel extends Hideable {
             <span class="${this.selectorClasses.radioLabel}">
               <span>Add left/right padding</span>
             </span>
+          </label>
+          <label class="${this.selectorClasses.radioOption}">
+            <input 
+              type="radio" 
+              name="unevenHandling" 
+              value="oneSlideFit" 
+              ${this.config.unevenHandling === "oneSlideFit" ? "checked" : ""}
+            />
+            <span class="${this.selectorClasses.radioLabel}">
+              <span>Fit to one slide</span>
+            </span>
           </label>          
         </div>
       </div>
@@ -279,7 +290,9 @@ export class ControlPanel extends Hideable {
         const hasManualPadding =
             this.config.manualPaddingX > 0 || this.config.manualPaddingY > 0;
         colorGroup.style.display =
-            this.config.unevenHandling === "pad" || hasManualPadding
+            this.config.unevenHandling === "pad" ||
+            this.config.unevenHandling === "oneSlideFit" ||
+            hasManualPadding
                 ? ""
                 : "none";
     }

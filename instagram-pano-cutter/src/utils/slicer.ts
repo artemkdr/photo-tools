@@ -33,8 +33,6 @@ export function sliceImage(
     let sliceCount = Math.ceil(imageWidth / sliceWidth);
 
     const slices: HTMLCanvasElement[] = [];
-    let lastSliceAdjusted = false;
-
     const adjustedCanvas = canvasFactory.getCanvas(
         1,
         1,
@@ -43,7 +41,8 @@ export function sliceImage(
 
     // If padding is requested, pad the entire image left/right so all slices align seamlessly.
     // If cropping is requested, crop the whole image to the nearest slice multiple before slicing.
-    const needsAdjustment = normalizedWidth % sliceWidth !== 0;
+    const needsAdjustment =
+        normalizedWidth % sliceWidth !== 0 || unevenHandling === "oneSlideFit";
     const ctx = adjustedCanvas.getContext("2d");
     if (!ctx) {
         throw new Error("Failed to get 2D context");
@@ -61,8 +60,6 @@ export function sliceImage(
             const offsetX = (paddedWidth - imageWidth) / 2;
             // center the image
             ctx.drawImage(sourceCanvas, offsetX, 0, imageWidth, imageHeight);
-
-            lastSliceAdjusted = true;
         } else if (unevenHandling === "crop") {
             // try to find optimal number of slices
             // objectif: we have to crop as less as possible
@@ -91,8 +88,51 @@ export function sliceImage(
                 optimalCropping.cropWidth,
                 optimalCropping.cropHeight,
             );
+        } else if (unevenHandling === "oneSlideFit") {
+            // we resize the image to fit ENTIRELY into one slide
+            // i.e. we could add horizontal or vertical padding to fit the aspect ratio
+            adjustedCanvas.width = targetDimensions.width;
+            adjustedCanvas.height = targetDimensions.height;
 
-            lastSliceAdjusted = imageWidth !== optimalCropping.cropWidth;
+            // calculate aspect ratios
+            const imageAspect = imageWidth / imageHeight;
+            const targetAspect =
+                targetDimensions.width / targetDimensions.height;
+
+            let destWidth = targetDimensions.width;
+            let destHeight = targetDimensions.height;
+            let destX = 0;
+            let destY = 0;
+
+            if (imageAspect > targetAspect) {
+                // image is wider than target, fit width and pad height
+                destHeight = targetDimensions.width / imageAspect;
+                destY = (targetDimensions.height - destHeight) / 2;
+            } else if (imageAspect < targetAspect) {
+                // image is taller than target, fit height and pad width
+                destWidth = targetDimensions.height * imageAspect;
+                destX = (targetDimensions.width - destWidth) / 2;
+            }
+            // Fill background with padding color
+            ctx.fillStyle = paddingColor;
+            ctx.fillRect(0, 0, targetDimensions.width, targetDimensions.height);
+            // Draw the image resized to fit within the target dimensions
+            ctx.drawImage(
+                sourceCanvas,
+                0,
+                0,
+                imageWidth,
+                imageHeight,
+                destX,
+                destY,
+                destWidth,
+                destHeight,
+            );
+
+            // only one slice
+            sliceCount = 1;
+            sliceWidth = targetDimensions.width;
+            sliceHeight = targetDimensions.height;
         }
     } else {
         // no adjustment needed, use original
@@ -124,7 +164,6 @@ export function sliceImage(
         sliceWidth,
         originalWidth: imageWidth,
         originalHeight: imageHeight,
-        lastSliceAdjusted,
     };
 }
 

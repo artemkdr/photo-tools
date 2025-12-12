@@ -18,7 +18,7 @@ export type AspectRatio = "1:1" | "4:5";
 /**
  * How to handle slices that don't perfectly fit the aspect ratio
  */
-export type UnevenHandling = "crop" | "pad";
+export type UnevenHandling = "crop" | "pad" | "oneSlideFit";
 
 /**
  * Theme options
@@ -66,8 +66,6 @@ export interface SliceResult {
     originalWidth: number;
     /** Original image height in pixels */
     originalHeight: number;
-    /** Whether the last slice needed special handling */
-    lastSliceAdjusted: boolean;
 }
 
 /**

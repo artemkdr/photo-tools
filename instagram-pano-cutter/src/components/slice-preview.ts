@@ -6,7 +6,6 @@ import { Hideable } from "./hideable";
  */
 export class SlicePreview extends Hideable {
     private previewContainer: HTMLElement;
-    private slices: HTMLCanvasElement[] = [];
     private wrapperMap: Map<
         HTMLElement,
         {
@@ -55,9 +54,7 @@ export class SlicePreview extends Hideable {
         // destroy previous slices properly for memory management
         this.clear();
 
-        this.slices = slices;
-
-        this.slices.forEach((canvas, index) => {
+        slices.forEach((canvas, index) => {
             const wrapper = document.createElement("div");
             wrapper.className = this.selectorClasses.previewItem;
 
@@ -105,7 +102,7 @@ export class SlicePreview extends Hideable {
             // Create and append label
             const label = document.createElement("span");
             label.className = this.selectorClasses.previewLabel;
-            label.textContent = `${index + 1}`;
+            label.textContent = `${index + 1} / ${slices.length}`;
 
             // Append wrapper first so it participates in layout and we can measure its CSS size
             wrapper.appendChild(previewCanvas);
@@ -143,8 +140,6 @@ export class SlicePreview extends Hideable {
      * Clear all previews
      */
     private clear(): void {
-        this.slices = [];
-
         // clear wrappers
         this.wrapperMap.forEach((value, wrapper) => {
             wrapper.innerHTML = "";

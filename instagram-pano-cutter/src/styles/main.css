@@ -28,6 +28,7 @@
     --spacing-2xl: 48px;
 
     /* Border radius */
+    --radius-xs: 2px;
     --radius-sm: 6px;
     --radius-md: 10px;
     --radius-lg: 16px;
@@ -228,10 +229,10 @@ a {
     #preview-container {
         order: 1;
     }
-    #download-panel-container {
+    #control-panel-container {
         order: 2;
     }
-    #control-panel-container {
+    #download-panel-container {
         order: 3;
     }
 }
@@ -446,6 +447,15 @@ a {
     margin-bottom: var(--spacing-sm);
 }
 
+@media (max-width: 999px) {
+    .control-panel {
+        gap: var(--spacing-xs);
+    }
+    .control-hint {
+        display: none;
+    }
+}
+
 .radio-group {
     display: flex;
     flex-direction: column;
@@ -522,6 +532,17 @@ a {
 
 .padding-input input[type="range"] {
     min-width: 9rem;
+    max-width: 20rem;
+    flex: 1;
+}
+
+@media (max-width: 999px) {
+    .padding-input {
+        justify-content: flex-start;
+    }
+    .padding-input .number-input-label {
+        text-align: left;
+    }
 }
 
 /* Color picker */
@@ -638,12 +659,13 @@ a {
 .preview-item canvas {
     width: 100%;
     height: auto;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-xs);
     box-shadow: 0 2px 8px var(--color-shadow);
 }
 
 .preview-label {
-    font-size: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: bold;
     color: var(--color-text-secondary);
 }
 
