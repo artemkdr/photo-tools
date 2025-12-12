@@ -6,6 +6,8 @@ import {
     SUPPORTED_EXTENSIONS,
 } from "../../../types";
 import { convertDefaultToBlob } from "./format/default";
+import { convertHeicToBlob } from "./format/heic";
+import { convertTiffToBlob } from "./format/tiff";
 import type { ICanvasFactory } from "./types";
 
 export async function convertToBlob(
@@ -43,7 +45,7 @@ export async function convertToBlob(
 
         if (isHeic) {
             // import dynamically to reduce initial bundle size
-            const { convertHeicToBlob } = await import("./format/heic");
+            //const { convertHeicToBlob } = await import("./format/heic");
             processedFile = await convertHeicToBlob(
                 file,
                 {
@@ -56,7 +58,7 @@ export async function convertToBlob(
             );
         } else if (isTiff) {
             // import dynamically to reduce initial bundle size
-            const { convertTiffToBlob } = await import("./format/tiff");
+            //const { convertTiffToBlob } = await import("./format/tiff");
             processedFile = await convertTiffToBlob(
                 file,
                 {

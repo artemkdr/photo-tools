@@ -59,9 +59,12 @@ export class SlicePreview extends Hideable {
      * Update the preview with new slices
      */
     public updateSlices(slices: OffscreenCanvas[]): void {
-        // destroy previous slices properly for memory management
-        this.clear();
-
+        const tempContainer = document.createDocumentFragment();
+        const wrappers: {
+            canvas: OffscreenCanvas;
+            previewCanvas: HTMLCanvasElement;
+            wrapper: HTMLElement;
+        }[] = [];
         slices.forEach((canvas, index) => {
             const wrapper = document.createElement("div");
             wrapper.className = this.selectorClasses.previewItem;
@@ -73,7 +76,6 @@ export class SlicePreview extends Hideable {
                 1,
                 `slice-preview-thumb-${index}`,
             );
-            this.canvasFactory.clearCanvas(previewCanvas);
             const displayMaxWidth = 200; // CSS pixels — preview thumb size
 
             // Determine scale to fit the slice into displayMaxWidth while preserving aspect ratio
@@ -83,47 +85,57 @@ export class SlicePreview extends Hideable {
 
             // Use devicePixelRatio to set backing store size for crisp rendering
             const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
-            previewCanvas.width = Math.round(displayWidth * dpr);
-            previewCanvas.height = Math.round(displayHeight * dpr);
+            const adjustedWidth = Math.round(displayWidth * dpr);
+            const adjustedHeight = Math.round(displayHeight * dpr);
 
-            // CSS size (how it appears on the page)
-            previewCanvas.style.width = `${displayWidth}px`;
-            previewCanvas.style.height = `${displayHeight}px`;
+            // Only resize/redraw if size changed
+            // as we use cached canvases from factory
+            if (
+                previewCanvas.width !== adjustedWidth ||
+                previewCanvas.height !== adjustedHeight
+            ) {
+                previewCanvas.width = adjustedWidth;
+                previewCanvas.height = adjustedHeight;
 
-            const ctx = previewCanvas.getContext("2d");
-            if (ctx) {
-                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-                ctx.imageSmoothingQuality = "high";
-                ctx.drawImage(
-                    canvas,
-                    0,
-                    0,
-                    canvas.width,
-                    canvas.height,
-                    0,
-                    0,
-                    displayWidth,
-                    displayHeight,
-                );
+                // CSS size (how it appears on the page)
+                previewCanvas.style.width = `${displayWidth}px`;
+                previewCanvas.style.height = `${displayHeight}px`;
+
+                const ctx = previewCanvas.getContext("2d");
+                if (ctx) {
+                    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                    ctx.imageSmoothingQuality = "high";
+                    ctx.drawImage(
+                        canvas,
+                        0,
+                        0,
+                        canvas.width,
+                        canvas.height,
+                        0,
+                        0,
+                        displayWidth,
+                        displayHeight,
+                    );
+                }
             }
 
             // Append wrapper first so it participates in layout and we can measure its CSS size
             wrapper.appendChild(previewCanvas);
-            // Create dot for this slide and keep it in map (append later after cap)
-            const dot = document.createElement("button");
-            dot.type = "button";
-            dot.className = this.selectorClasses.previewDot;
-            dot.setAttribute("role", "tab");
-            dot.setAttribute("aria-selected", "false");
-            dot.setAttribute(
-                "aria-label",
-                `Slide ${index + 1} of ${slices.length}`,
-            );
-            this.dotMap.set(wrapper, dot);
-            this.previewContainer.appendChild(wrapper);
-            this.previewContainer.appendChild(wrapper);
+            tempContainer.appendChild(wrapper);
 
-            // Ensure final high-quality rendering after layout (use RAF to wait for layout)
+            wrappers.push({ canvas, previewCanvas, wrapper });
+        });
+
+        // destroy previous slices properly for memory management
+        this.clear();
+
+        // Append all new wrappers to preview container
+        this.previewContainer.replaceChildren(tempContainer);
+        tempContainer.replaceChildren();
+
+        // Ensure final high-quality rendering after layout (use RAF to wait for layout)
+        for (let i = 0; i < wrappers.length; i++) {
+            const { canvas, previewCanvas, wrapper } = wrappers[i];
             const refId = requestAnimationFrame(() => {
                 this.updatePreviewCanvas(previewCanvas, canvas, wrapper);
             });
@@ -133,7 +145,19 @@ export class SlicePreview extends Hideable {
                 canvas: previewCanvas,
                 requestedAnimationFrameId: refId,
             });
-        });
+
+            // Create dot for this slide and keep it in map (append later after cap)
+            const dot = document.createElement("button");
+            dot.type = "button";
+            dot.className = this.selectorClasses.previewDot;
+            dot.setAttribute("role", "tab");
+            dot.setAttribute("aria-selected", "false");
+            dot.setAttribute(
+                "aria-label",
+                `Slide ${i + 1} of ${slices.length}`,
+            );
+            this.dotMap.set(wrapper, dot);
+        }
 
         // Render dots: cap to 20
         const maxDots = 20;

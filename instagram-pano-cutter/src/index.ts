@@ -190,17 +190,8 @@ class App {
         this.downloadPanel.show();
     }
 
-    private processImageRAFId: number | null = null;
-
     private readonly throttlerProcessImage = throttleWithDebounce(() => {
-        // Cancel any pending RAF
-        if (this.processImageRAFId !== null) {
-            cancelAnimationFrame(this.processImageRAFId);
-            this.processImageRAFId = null;
-        }
-        //this.processImageRAFId = requestAnimationFrame(() => {
         this.processImage();
-        //});
     }, 100);
 
     private handleConfigChange(config: SliceConfig): void {

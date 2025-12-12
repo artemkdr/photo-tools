@@ -1,3 +1,5 @@
+import { convertToBlob } from "./converter";
+
 /**
  * Worker wrapper of converter
  *
@@ -35,7 +37,6 @@ self.onmessage = async (event: MessageEvent) => {
     };
     try {
         // import converter dynamically
-        const { convertToBlob } = await import("./converter");
         const resultBlob = await convertToBlob(file, config);
         postMessage({ success: true, type: "convert", blob: resultBlob });
     } catch (e) {
