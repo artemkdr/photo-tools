@@ -10,7 +10,8 @@
         "lint": "npx biome format && npx biome lint",
         "lint:fix": "npx biome format --write && npx biome lint --write",
         "typecheck": "npx tsc --noEmit",
-        "precommit": "npm run typecheck && npm run lint:fix"
+        "precommit": "npm run typecheck && npm run lint:fix",
+        "test": "npm run test"
     },
     "devDependencies": {
         "@artemkdr/biome-base": "^0.0.3",

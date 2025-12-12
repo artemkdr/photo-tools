@@ -1,0 +1,14 @@
+{
+  "private": true,
+  "name": "photo-tools-monorepo",
+  "version": "1.0.0",
+  "workspaces": [
+    "instagram-pano-cutter"
+  ],
+  "scripts": {
+    "build": "npm -w instagram-pano-cutter run build",
+    "dev": "npm -w instagram-pano-cutter run dev",
+    "precommit": "npm -w instagram-pano-cutter run precommit",
+    "test": "npm -w instagram-pano-cutter run test"
+  }
+}
