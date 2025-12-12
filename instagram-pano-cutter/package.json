@@ -11,9 +11,8 @@
         "lint:fix": "npx biome format --write && npx biome lint --write",
         "typecheck": "npx tsc --noEmit",
         "precommit": "npm run typecheck && npm run lint:fix",
-        "test": "vitest",
-        "test:ui": "vitest --ui",
-        "test:run": "vitest run",
+        "test": "vitest run",
+        "test:watch": "vitest watch",
         "test:coverage": "vitest run --coverage"
     },
     "devDependencies": {
