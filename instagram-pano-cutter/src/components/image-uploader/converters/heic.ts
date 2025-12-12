@@ -1,8 +1,18 @@
 import decode from "heic-decode";
+import { dataToCanvas } from "./data-to-canvas";
 
 // Convert HEIC to a browser-friendly blob using heic2any (WASM). Returns a Blob (image/jpeg by default).
 export async function convertHeicToBlob(
     file: File,
+    config: {
+        quality?: number; // 0 to 1
+        format?: "image/jpeg" | "image/png" | "image/webp";
+        maxWidth?: number;
+        maxHeight?: number;
+    } = {
+        quality: 0.95,
+        format: "image/webp",
+    },
     onError?: (error: unknown) => void,
     canvasFactory?: {
         getCanvas: (
@@ -24,31 +34,20 @@ export async function convertHeicToBlob(
         if (!width || !height || !data)
             throw new Error("Invalid HEIC decode result");
 
-        const canvas = canvasFactory
-            ? canvasFactory.getCanvas(width, height, "converter")
-            : document.createElement("canvas");
-        if (canvasFactory) {
-            canvasFactory.clearCanvas(canvas);
-        }
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) throw new Error("Failed to create canvas");
-
-        const imageData = ctx.createImageData(width, height);
-        imageData.data.set(new Uint8ClampedArray(data));
-        ctx.putImageData(imageData, 0, 0);
+        const canvas = dataToCanvas(data, width, height, config, canvasFactory);
 
         const result = await new Promise<Blob>((resolve, reject) => {
-            canvas.toBlob((b) => {
-                if (b) resolve(b);
-                else reject(new Error("Canvas toBlob failed"));
-            }, "image/png");
+            canvas.toBlob(
+                (b) => {
+                    if (b) resolve(b);
+                    else reject(new Error("Canvas toBlob failed"));
+                },
+                config.format,
+                config.quality,
+            );
         });
         // clean up canvas
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        canvas.width = 0;
-        canvas.height = 0;
+        canvasFactory?.clearCanvas(canvas);
         return result;
     } catch (e) {
         onError?.(e);

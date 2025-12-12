@@ -7,6 +7,7 @@ import {
     type ICanvasFactory,
 } from "../../types";
 import { Hideable } from "../hideable";
+import { convertToBlob } from "./converters/default";
 
 export type ImageLoadCallback = (image: HTMLImageElement, file: File) => void;
 export type ErrorCallback = (message: string) => void;
@@ -32,14 +33,32 @@ export class ImageUploader extends Hideable {
     };
     private isLoading = false;
     private canvasFactory?: ICanvasFactory;
+    private config: {
+        quality?: number; // 0 to 1
+        format?: "image/jpeg" | "image/png" | "image/webp";
+        maxWidth?: number;
+        maxHeight?: number;
+    };
 
     constructor(
         container: HTMLElement,
         onImageLoad: ImageLoadCallback,
         onError?: ErrorCallback,
+        config: {
+            quality?: number; // 0 to 1
+            format?: "image/jpeg" | "image/png" | "image/webp";
+            maxWidth?: number;
+            maxHeight?: number;
+        } = {
+            quality: 0.95,
+            format: "image/webp",
+            maxWidth: 5000,
+            maxHeight: 5000,
+        },
         canvasFactory?: ICanvasFactory,
     ) {
         super(container);
+        this.config = config;
         this.canvasFactory = canvasFactory;
         this.onImageLoad = onImageLoad;
         this.onError = onError;
@@ -177,6 +196,12 @@ export class ImageUploader extends Hideable {
                 const { convertHeicToBlob } = await import("./converters/heic");
                 processedFile = await convertHeicToBlob(
                     file,
+                    {
+                        quality: this.config.quality,
+                        format: this.config.format,
+                        maxWidth: this.config.maxWidth,
+                        maxHeight: this.config.maxHeight,
+                    },
                     (_) => {
                         this.showError(
                             "Failed to decode HEIC. Try converting the file to JPEG/PNG using your OS or an online tool.",
@@ -189,6 +214,29 @@ export class ImageUploader extends Hideable {
                 const { convertTiffToBlob } = await import("./converters/tiff");
                 processedFile = await convertTiffToBlob(
                     file,
+                    {
+                        quality: this.config.quality,
+                        format: this.config.format,
+                        maxWidth: this.config.maxWidth,
+                        maxHeight: this.config.maxHeight,
+                    },
+                    (_) => {
+                        this.showError(
+                            "Failed to decode TIFF. Try converting the file to JPEG/PNG using a tool.",
+                        );
+                    },
+                    this.canvasFactory,
+                );
+            } else {
+                // convert to image/webp, 0.95 quality to reduce size and improve loading
+                processedFile = await convertToBlob(
+                    file,
+                    {
+                        quality: this.config.quality,
+                        format: this.config.format,
+                        maxWidth: this.config.maxWidth,
+                        maxHeight: this.config.maxHeight,
+                    },
                     (_) => {
                         this.showError(
                             "Failed to decode TIFF. Try converting the file to JPEG/PNG using a tool.",

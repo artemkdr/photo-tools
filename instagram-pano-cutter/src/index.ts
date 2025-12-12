@@ -7,7 +7,7 @@ import type { ICanvasFactory, SliceConfig, SliceResult, Theme } from "./types";
 import { CanvasFactory } from "./utils/canvas-factory";
 import { generateBaseName } from "./utils/download";
 import { sliceImage } from "./utils/slicer";
-import { throttle } from "./utils/throttle";
+import { throttleWithDebounce } from "./utils/throttle-with-debounce";
 
 /**
  * Main application class
@@ -81,6 +81,12 @@ class App {
             },
             (_) => {
                 // console.error("Uploader error:", error);
+            },
+            {
+                quality: 0.95,
+                format: "image/webp",
+                maxWidth: 5000,
+                maxHeight: 5000,
             },
             this.canvasFactory,
         );
@@ -185,17 +191,24 @@ class App {
         this.downloadPanel.show();
     }
 
-    private readonly throttlerProcessImage = throttle(() => {
+    private processImageRAFId: number | null = null;
+
+    private readonly throttlerProcessImage = throttleWithDebounce(() => {
+        // Cancel any pending RAF
+        if (this.processImageRAFId !== null) {
+            cancelAnimationFrame(this.processImageRAFId);
+            this.processImageRAFId = null;
+        }
+        //this.processImageRAFId = requestAnimationFrame(() => {
         this.processImage();
-    }, 50);
+        //});
+    }, 100);
 
     private handleConfigChange(config: SliceConfig): void {
         this.config = config;
 
         // Re-process if we have an image
         if (this.currentImage) {
-            // process with debouncer
-            // use closure for debouncer
             this.throttlerProcessImage();
         }
     }

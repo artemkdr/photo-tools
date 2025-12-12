@@ -651,15 +651,15 @@ a {
 /* Dots below the preview grid (Instagram-style pagination) */
 .preview-dots {
     display: flex;
-    gap: var(--spacing-xs);
+    gap: var(--spacing-sm);
     justify-content: center;
     align-items: center;
     padding-top: var(--spacing-sm);
 }
 
 .preview-dot {
-    width: 10px;
-    height: 10px;
+    width: 6px;
+    height: 6px;
     background-color: var(--color-text-tertiary);
     border-radius: 50%;
     opacity: 0.6;

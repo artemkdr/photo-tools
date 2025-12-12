@@ -1,8 +1,6 @@
-import UTIF from "utif2";
 import { dataToCanvas } from "./data-to-canvas";
 
-// Convert TIFF to a browser image using UTIF library
-export async function convertTiffToBlob(
+export async function convertToBlob(
     file: File,
     config: {
         quality?: number; // 0 to 1
@@ -25,17 +23,18 @@ export async function convertTiffToBlob(
     },
 ): Promise<Blob> {
     try {
-        const buffer = await file.arrayBuffer();
-        const ifds = UTIF.decode(buffer);
-        const first = ifds[0];
-        UTIF.decodeImage(buffer, first);
-        const rgba = UTIF.toRGBA8(first);
+        const imgBitmap = await createImageBitmap(file);
+        const width = imgBitmap.width;
+        const height = imgBitmap.height;
+        // convert imgBitmap to buffer array
+        const offscreenCanvas = new OffscreenCanvas(width, height);
+        const ctx = offscreenCanvas.getContext("2d");
+        if (!ctx) throw new Error("Failed to create OffscreenCanvas context");
+        ctx.drawImage(imgBitmap, 0, 0, width, height);
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const data = imageData.data.buffer;
 
-        const width = first.width;
-        const height = first.height;
-
-        const canvas = dataToCanvas(rgba, width, height, config, canvasFactory);
-
+        const canvas = dataToCanvas(data, width, height, config, canvasFactory);
         const result = await new Promise<Blob>((resolve, reject) => {
             canvas.toBlob(
                 (b) => {
