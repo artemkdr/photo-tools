@@ -1,13 +1,13 @@
-import type { ICanvasFactory, SliceConfig, SliceResult, Theme } from "./types";
-import { sliceImage } from "./utils/slicer";
-import { generateBaseName } from "./utils/download";
-import { ImageUploader } from "./components/image-uploader/image-uploader";
 import { ControlPanel } from "./components/control-panel";
-import { SlicePreview } from "./components/slice-preview";
 import { DownloadPanel } from "./components/download-panel";
+import { ImageUploader } from "./components/image-uploader/image-uploader";
+import { SlicePreview } from "./components/slice-preview";
 import { ThemeToggle } from "./components/theme-toggle";
-import { debounce } from "./utils/debounce";
+import type { ICanvasFactory, SliceConfig, SliceResult, Theme } from "./types";
 import { CanvasFactory } from "./utils/canvas-factory";
+import { generateBaseName } from "./utils/download";
+import { sliceImage } from "./utils/slicer";
+import { throttle } from "./utils/throttle";
 
 /**
  * Main application class
@@ -138,6 +138,24 @@ class App {
         this.currentImage = image;
         this.currentFile = file;
 
+        // validate image dimensions
+        // minimum 500x500
+        if (image.naturalWidth < 500 || image.naturalHeight < 500) {
+            this.handleError({
+                message:
+                    "Image is too small. Please upload an image at least 500 pixels in width and height.",
+            });
+            return;
+        }
+        // maximum 10000x10000
+        if (image.naturalWidth > 10000 || image.naturalHeight > 10000) {
+            this.handleError({
+                message:
+                    "Image is too large. Please upload an image smaller than 10,000 pixels in width and height.",
+            });
+            return;
+        }
+
         // Process and update info display
         this.processImage();
 
@@ -167,7 +185,7 @@ class App {
         this.downloadPanel.show();
     }
 
-    private readonly debouncedProcessImage = debounce(() => {
+    private readonly throttlerProcessImage = throttle(() => {
         this.processImage();
     }, 50);
 
@@ -178,7 +196,7 @@ class App {
         if (this.currentImage) {
             // process with debouncer
             // use closure for debouncer
-            this.debouncedProcessImage();
+            this.throttlerProcessImage();
         }
     }
 

@@ -25,7 +25,7 @@ export function downloadCanvas(
                 resolve();
             },
             format,
-            1.0, // Maximum quality
+            0.95,
         );
     });
 }
