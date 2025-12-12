@@ -240,7 +240,9 @@ class App {
         this.slicePreview.updateSlices(result.slices);
 
         // Update download panel
-        const baseName = generateBaseName(this.currentFile.name);
+        const baseName = generateBaseName(
+            `${this.currentFile.name}-${Date.now()}`,
+        );
         this.downloadPanel.setSlices(result.slices, baseName);
 
         // Update slice count in info
