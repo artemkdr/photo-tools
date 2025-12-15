@@ -104,7 +104,7 @@ export class SlicePreview extends Hideable {
                 const ctx = previewCanvas.getContext("2d");
                 if (ctx) {
                     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-                    ctx.imageSmoothingQuality = "high";
+                    ctx.imageSmoothingQuality = "low";
                     ctx.drawImage(
                         canvas,
                         0,
@@ -347,7 +347,7 @@ export class SlicePreview extends Hideable {
             const ctx = previewCanvas.getContext("2d");
             if (ctx) {
                 ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-                ctx.imageSmoothingQuality = "high";
+                ctx.imageSmoothingQuality = "low";
                 ctx.clearRect(0, 0, cssWidth, cssHeight);
                 ctx.drawImage(
                     sourceCanvas,

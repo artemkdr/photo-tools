@@ -19,7 +19,7 @@ class App {
     private uploader!: ImageUploader;
     private canvasFactory: ICanvasFactory;
 
-    private currentImage: HTMLImageElement | null = null;
+    private currentImageBitmap: ImageBitmap | null = null;
     private currentFile: File | null = null;
     private config: SliceConfig = {
         aspectRatio: "4:5",
@@ -85,12 +85,12 @@ class App {
             {
                 onStart: () => {
                     // reset current image and file
-                    this.currentImage = null;
+                    this.currentImageBitmap = null;
                     this.currentFile = null;
                     this.updateUI(false);
                 },
-                onImageLoad: (image: HTMLImageElement, file: File) => {
-                    this.handleImageLoad(image, file);
+                onImageLoad: (imageBitmap: ImageBitmap, file: File) => {
+                    this.handleImageLoad(imageBitmap, file);
                 },
                 onError: (_) => {
                     // console.error("Uploader error:", error);
@@ -147,13 +147,17 @@ class App {
         return container;
     }
 
-    private handleImageLoad(image: HTMLImageElement, file: File): void {
-        this.currentImage = image;
+    private handleImageLoad(imageBitmap: ImageBitmap, file: File): void {
+        if (this.currentImageBitmap) {
+            // Dispose previous image bitmap to free memory
+            this.currentImageBitmap.close();
+        }
+        this.currentImageBitmap = imageBitmap;
         this.currentFile = file;
 
         // validate image dimensions
         // minimum 500x500
-        if (image.naturalWidth < 500 || image.naturalHeight < 500) {
+        if (imageBitmap.width < 500 || imageBitmap.height < 500) {
             this.handleError({
                 message:
                     "Image is too small. Please upload an image at least 500 pixels in width and height.",
@@ -161,7 +165,7 @@ class App {
             return;
         }
         // maximum 10000x10000
-        if (image.naturalWidth > 10000 || image.naturalHeight > 10000) {
+        if (imageBitmap.width > 10000 || imageBitmap.height > 10000) {
             this.handleError({
                 message:
                     "Image is too large. Please upload an image smaller than 10,000 pixels in width and height.",
@@ -214,7 +218,7 @@ class App {
         this.config = config;
 
         // Re-process if we have an image
-        if (this.currentImage) {
+        if (this.currentImageBitmap) {
             this.throttlerProcessImage();
         }
     }
@@ -242,24 +246,57 @@ class App {
         alert(`Error: ${message}`);
     }
 
+    private previousProcessSnapshot: {
+        imageBitmap: ImageBitmap | null;
+        config: string | null;
+    } = {
+        imageBitmap: null,
+        config: null,
+    };
+
     private processImage(): SliceResult | undefined {
-        if (!this.currentImage || !this.currentFile) return;
+        if (!this.currentImageBitmap || !this.currentFile) return;
+
+        // if no changes, return
+        if (
+            this.currentImageBitmap ===
+                this.previousProcessSnapshot.imageBitmap &&
+            JSON.stringify(this.config) === this.previousProcessSnapshot.config
+        ) {
+            return;
+        }
+
+        this.previousProcessSnapshot.imageBitmap = this.currentImageBitmap;
+        this.previousProcessSnapshot.config = JSON.stringify(this.config);
 
         // Slice the image
+        const t1 = performance.now();
         const result = sliceImage(
-            this.currentImage,
+            this.currentImageBitmap,
             this.config,
             this.canvasFactory,
         );
+        const t2 = performance.now();
+        console.log(`Image slicing took ${(t2 - t1).toFixed(2)} milliseconds`);
 
         // Update preview
+        const t3 = performance.now();
         this.slicePreview.updateSlices(result.slices);
+        const t4 = performance.now();
+        console.log(
+            `Slice preview update took ${(t4 - t3).toFixed(2)} milliseconds`,
+        );
 
         // Update download panel
         const baseName = generateBaseName(
             `${this.currentFile.name}-${Date.now()}`,
         );
+        const t5 = performance.now();
         this.downloadPanel.setSlices(result.slices, baseName);
+        const t6 = performance.now();
+        console.log(
+            `Download panel update took ${(t6 - t5).toFixed(2)} milliseconds`,
+        );
 
         // Update slice count in info
         const slicesEl = document.getElementById("info-slices");

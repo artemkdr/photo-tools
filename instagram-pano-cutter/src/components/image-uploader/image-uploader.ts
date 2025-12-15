@@ -1,7 +1,7 @@
 import { SUPPORTED_EXTENSIONS } from "../../types";
 import { Hideable } from "../hideable";
 
-export type ImageLoadCallback = (image: HTMLImageElement, file: File) => void;
+export type ImageLoadCallback = (image: ImageBitmap, file: File) => void;
 export type ErrorCallback = (message: string) => void;
 export type StartCallback = (file: File) => void;
 
@@ -209,23 +209,9 @@ export class ImageUploader extends Hideable {
         //this.setLoading(false);
     }
 
-    private loadImage(file: File | Blob): Promise<HTMLImageElement> {
-        return new Promise((resolve, reject) => {
-            const img = new Image();
-            const url = URL.createObjectURL(file);
-
-            img.onload = () => {
-                URL.revokeObjectURL(url);
-                resolve(img);
-            };
-
-            img.onerror = () => {
-                URL.revokeObjectURL(url);
-                reject(new Error("Failed to load image"));
-            };
-
-            img.src = url;
-        });
+    private async loadImage(file: File | Blob): Promise<ImageBitmap> {
+        const imageBitmap = await createImageBitmap(file);
+        return imageBitmap;
     }
 
     private showError(message: string): void {
