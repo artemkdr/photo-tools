@@ -228,7 +228,6 @@ class App {
     }
 
     private handleError(error: { message: string; hidden?: boolean }): void {
-        console.error("Error:", error);
         const message =
             error.message || String(error) || "An unknown error occurred";
         if (
@@ -270,34 +269,21 @@ class App {
         this.previousProcessSnapshot.config = JSON.stringify(this.config);
 
         // Slice the image
-        const t1 = performance.now();
         const result = sliceImage(
             this.currentImageBitmap,
             this.config,
             this.canvasFactory,
         );
-        const t2 = performance.now();
-        console.log(`Image slicing took ${(t2 - t1).toFixed(2)} milliseconds`);
-
+        
         // Update preview
-        const t3 = performance.now();
         this.slicePreview.updateSlices(result.slices);
-        const t4 = performance.now();
-        console.log(
-            `Slice preview update took ${(t4 - t3).toFixed(2)} milliseconds`,
-        );
-
+        
         // Update download panel
-        const baseName = generateBaseName(
-            `${this.currentFile.name}-${Date.now()}`,
-        );
-        const t5 = performance.now();
+        const baseName = `${generateBaseName(
+            `${this.currentFile.name}`,
+        )}-${Date.now()}`;
         this.downloadPanel.setSlices(result.slices, baseName);
-        const t6 = performance.now();
-        console.log(
-            `Download panel update took ${(t6 - t5).toFixed(2)} milliseconds`,
-        );
-
+        
         // Update slice count in info
         const slicesEl = document.getElementById("info-slices");
         if (slicesEl) {
