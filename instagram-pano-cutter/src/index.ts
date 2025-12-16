@@ -274,16 +274,16 @@ class App {
             this.config,
             this.canvasFactory,
         );
-        
+
         // Update preview
         this.slicePreview.updateSlices(result.slices);
-        
+
         // Update download panel
         const baseName = `${generateBaseName(
             `${this.currentFile.name}`,
         )}-${Date.now()}`;
         this.downloadPanel.setSlices(result.slices, baseName);
-        
+
         // Update slice count in info
         const slicesEl = document.getElementById("info-slices");
         if (slicesEl) {

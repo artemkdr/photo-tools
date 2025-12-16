@@ -6,9 +6,9 @@
     "instagram-pano-cutter"
   ],
   "scripts": {
-    "build": "npm -w instagram-pano-cutter run build",
-    "dev": "npm -w instagram-pano-cutter run dev",
-    "precommit": "npm -w instagram-pano-cutter run precommit",
-    "test": "npm -w instagram-pano-cutter run test"
+    "build": "npm --workspace instagram-pano-cutter run build",
+    "dev": "npm --workspace instagram-pano-cutter run dev",
+    "precommit": "npm --workspace instagram-pano-cutter run precommit",
+    "test": "npm --workspace instagram-pano-cutter run test"
   }
 }

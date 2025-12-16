@@ -5,7 +5,7 @@
     "description": "Cut horizontal photos into Instagram carousel slides",
     "scripts": {
         "dev": "vite --force",
-        "build": "tsc && vite build",
+        "build": "npx tsc && vite build",
         "preview": "vite preview",
         "lint": "npx biome format && npx biome lint",
         "lint:fix": "npx biome format --write && npx biome lint --write",
