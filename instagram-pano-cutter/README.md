@@ -6,6 +6,7 @@ Cut horizontal panorama photos into Instagram carousel slides with precise contr
 - ✂️ **Smart Slicing**: Automatically slice panoramic photos into Instagram-ready carousel slides
 - 📐 **Multiple Aspect Ratios**: Support for 1:1 (square) and 4:5 (portrait) Instagram formats
 - 🎨 **Flexible Handling**: Choose how to handle uneven slices - crop, pad with custom colors, or fit to one slide
+- 🧵 **Worker-based Processing**: Image conversion and slicing run in Web Workers to keep the UI responsive
 - 📱 **PWA Support**: Install as a Progressive Web App on any device
 - 🎯 **Manual Padding**: Add custom padding (horizontal/vertical) before slicing for fine-tuned control
 - 🖼️ **Wide Format Support**: Supports JPEG, PNG, GIF, WebP, AVIF, BMP, HEIC/HEIF, and various RAW formats (TIFF, DNG, NEF, PEF, etc.)
@@ -17,9 +18,15 @@ Cut horizontal panorama photos into Instagram carousel slides with precise contr
 **Technology Stack:**
 - TypeScript
 - Vite
-- Native Web APIs (Canvas, OffscreenCanvas)
+- Native Web APIs (Canvas, OffscreenCanvas, ImageBitmap, Web Workers)
 - PWA (Service Workers)
 - Image format libraries: heic-decode, utif2
+
+## 🧠 Performance Notes
+
+- **Converter Worker**: The upload pipeline converts/normalizes images in a dedicated worker and returns a `Blob` back to the main thread.
+- **Slicer Worker**: Slicing runs in a worker and returns the generated slices as `ImageBitmap[]` (transferred back to the main thread for efficient handoff).
+- **ImageBitmap handoff**: The app uses `ImageBitmap` for passing the decoded source image between components and the slicing worker, avoiding DOM canvas transfer and keeping the main thread snappy.
 
 ## 🚀 Getting Started
 
@@ -123,12 +130,24 @@ photo-tools/
 │   │   ├── components/             # UI components
 │   │   │   ├── control-panel.ts    # Settings panel
 │   │   │   ├── download-panel.ts   # Download interface
-│   │   │   ├── image-uploader/     # File upload component
+│   │   │   ├── image-uploader/     # File upload + conversion
+│   │   │   │   ├── image-uploader.ts
+│   │   │   │   └── converters/     # Worker-based conversion pipeline
+│   │   │   │       ├── converter.ts
+│   │   │   │       ├── types.ts
+│   │   │   │       ├── worker.ts
+│   │   │   │       └── format/
+│   │   │   │           ├── data-to-canvas.ts
+│   │   │   │           ├── default.ts
+│   │   │   │           ├── heic.ts
+│   │   │   │           └── tiff.ts
 │   │   │   ├── slice-preview.ts    # Preview canvas
 │   │   │   └── theme-toggle.ts     # Dark mode toggle
 │   │   ├── styles/                 # CSS styles
 │   │   ├── utils/                  # Utility functions
-│   │   │   ├── slicer.ts          # Core slicing logic
+│   │   │   ├── slicer/            # Worker-based slicer
+│   │   │   │   ├── slicer.ts      # Core slicing logic
+│   │   │   │   └── worker.ts      # Slicing worker wrapper
 │   │   │   ├── canvas-factory.ts  # Canvas management
 │   │   │   └── download.ts        # Download helpers
 │   │   ├── types.ts               # TypeScript type definitions
