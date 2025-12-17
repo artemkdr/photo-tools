@@ -93,7 +93,7 @@ export class ControlPanel extends Hideable {
               ${this.config.unevenHandling === "crop" ? "checked" : ""}
             />
             <span class="${this.selectorClasses.radioLabel}">
-              <span>Crop to fit</span>
+              <span>Crop (cut as little as possible)</span>
             </span>
           </label>
           <label class="${this.selectorClasses.radioOption}">
