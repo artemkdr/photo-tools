@@ -36,14 +36,19 @@ self.onmessage = async (event: MessageEvent) => {
         };
     };
     try {
-        // import converter dynamically
         const resultBlob = await convertToBlob(file, config);
-        postMessage({ success: true, type: "convert", blob: resultBlob });
+        postMessage({
+            success: true,
+            type: "convert",
+            blob: resultBlob,
+            fileName: file.name,
+        });
     } catch (e) {
         postMessage({
             success: false,
             type: "convert",
             error: (e as Error).message,
+            fileName: file.name,
         });
     }
 };

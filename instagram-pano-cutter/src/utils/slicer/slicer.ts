@@ -3,8 +3,8 @@ import {
     type SliceConfig,
     type SliceResult,
     INSTAGRAM_DIMENSIONS,
-} from "../types";
-import { getOptimalCropping } from "./get-optimal-cropping";
+} from "../../types";
+import { getOptimalCropping } from "../get-optimal-cropping";
 
 /**
  * Slice an image into Instagram-ready carousel slides
@@ -32,7 +32,7 @@ export function sliceImage(
     let sliceHeight = imageHeight;
     let sliceCount = Math.ceil(imageWidth / sliceWidth);
 
-    const slices: OffscreenCanvas[] = [];
+    const slices: ImageBitmap[] = [];
     const adjustedCanvas = canvasFactory.getOffscreenCanvas(
         1,
         1,
@@ -43,21 +43,29 @@ export function sliceImage(
     // If cropping is requested, crop the whole image to the nearest slice multiple before slicing.
     const needsAdjustment =
         normalizedWidth % sliceWidth !== 0 || unevenHandling === "oneSlideFit";
-    const ctx = adjustedCanvas.getContext("2d");
+    const ctx = adjustedCanvas.getContext("2d", { alpha: false });
     if (!ctx) {
         throw new Error("Failed to get 2D context");
     }
+    // Adjust the source image as needed
     if (needsAdjustment) {
         if (unevenHandling === "pad") {
             // padded real width of the whole image
             const paddedWidth = sliceCount * sliceWidth;
+            if (
+                adjustedCanvas.width !== paddedWidth ||
+                adjustedCanvas.height !== imageHeight
+            ) {
+                adjustedCanvas.width = paddedWidth;
+                adjustedCanvas.height = imageHeight;
+            }
             adjustedCanvas.width = paddedWidth;
             adjustedCanvas.height = imageHeight;
 
             // Fill background with padding color, then center the original image
             ctx.fillStyle = paddingColor;
             ctx.fillRect(0, 0, paddedWidth, imageHeight);
-            const offsetX = (paddedWidth - imageWidth) / 2;
+            const offsetX = Math.round((paddedWidth - imageWidth) / 2);
             // center the image
             ctx.drawImage(sourceCanvas, offsetX, 0, imageWidth, imageHeight);
         } else if (unevenHandling === "crop") {
@@ -76,6 +84,13 @@ export function sliceImage(
             const cropWidth = Math.round(optimalCropping.cropWidth);
             const cropHeight = Math.round(optimalCropping.cropHeight);
 
+            if (
+                adjustedCanvas.width !== cropWidth ||
+                adjustedCanvas.height !== cropHeight
+            ) {
+                adjustedCanvas.width = cropWidth;
+                adjustedCanvas.height = cropHeight;
+            }
             adjustedCanvas.width = cropWidth;
             adjustedCanvas.height = cropHeight;
 
@@ -94,9 +109,13 @@ export function sliceImage(
         } else if (unevenHandling === "oneSlideFit") {
             // we resize the image to fit ENTIRELY into one slide
             // i.e. we could add horizontal or vertical padding to fit the aspect ratio
-            adjustedCanvas.width = targetDimensions.width;
-            adjustedCanvas.height = targetDimensions.height;
-
+            if (
+                adjustedCanvas.width !== targetDimensions.width ||
+                adjustedCanvas.height !== targetDimensions.height
+            ) {
+                adjustedCanvas.width = Math.round(targetDimensions.width);
+                adjustedCanvas.height = Math.round(targetDimensions.height);
+            }
             // calculate aspect ratios
             const imageAspect = imageWidth / imageHeight;
             const targetAspect =
@@ -118,7 +137,12 @@ export function sliceImage(
             }
             // Fill background with padding color
             ctx.fillStyle = paddingColor;
-            ctx.fillRect(0, 0, targetDimensions.width, targetDimensions.height);
+            ctx.fillRect(
+                0,
+                0,
+                Math.round(targetDimensions.width),
+                Math.round(targetDimensions.height),
+            );
             // Draw the image resized to fit within the target dimensions
             ctx.drawImage(
                 sourceCanvas,
@@ -139,10 +163,16 @@ export function sliceImage(
         }
     } else {
         // no adjustment needed, use original
-        adjustedCanvas.width = imageWidth;
-        adjustedCanvas.height = imageHeight;
+        if (
+            adjustedCanvas.width !== imageWidth ||
+            adjustedCanvas.height !== imageHeight
+        ) {
+            adjustedCanvas.width = imageWidth;
+            adjustedCanvas.height = imageHeight;
+        }
         ctx.drawImage(sourceCanvas, 0, 0, imageWidth, imageHeight);
     }
+    // now slice the (possibly adjusted) image
     for (let i = 0; i < sliceCount; i++) {
         const sourceX = i * sliceWidth;
         const sourceY = 0;
@@ -188,22 +218,26 @@ function buildSourceCanvas(
     const paddedHeight = Math.round(imageBitmap.height + paddingY);
 
     const canvas = canvasFactory.getOffscreenCanvas(
-        1,
-        1,
+        paddedWidth,
+        paddedHeight,
         "slicer-source-canvas",
     );
-    canvasFactory.clearCanvas(canvas);
-    canvas.width = paddedWidth;
-    canvas.height = paddedHeight;
+    if (canvas.width !== paddedWidth || canvas.height !== paddedHeight) {
+        canvas.width = paddedWidth;
+        canvas.height = paddedHeight;
+    }
 
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { alpha: false });
     if (ctx) {
         // Fill background with padding color, then center the original image
-        ctx.clearRect(0, 0, paddedWidth, paddedHeight);
         ctx.fillStyle = config.paddingColor;
         ctx.fillRect(0, 0, paddedWidth, paddedHeight);
         // Draw the original image centered with padding
-        ctx.drawImage(imageBitmap, manualPaddingX, manualPaddingY);
+        ctx.drawImage(
+            imageBitmap,
+            Math.round(manualPaddingX),
+            Math.round(manualPaddingY),
+        );
     }
 
     return canvas;
@@ -218,29 +252,32 @@ function createFullSlice(
     sourceHeight: number,
     targetDimensions: { width: number; height: number },
     index = 0,
-): OffscreenCanvas {
+): ImageBitmap {
     const canvas = canvasFactory.getOffscreenCanvas(
         targetDimensions.width,
         targetDimensions.height,
         `slicer-full-slice-${index}`,
     );
-    canvasFactory.clearCanvas(canvas);
-    canvas.width = targetDimensions.width;
-    canvas.height = targetDimensions.height;
-    const ctx = canvas.getContext("2d");
+    if (
+        canvas.width !== targetDimensions.width ||
+        canvas.height !== targetDimensions.height
+    ) {
+        canvas.width = targetDimensions.width;
+        canvas.height = targetDimensions.height;
+    }
+    const ctx = canvas.getContext("2d", { alpha: false });
     if (ctx) {
-        // clear previous rendering
         ctx.drawImage(
             image,
-            sourceX,
-            sourceY,
-            sourceWidth,
-            sourceHeight, // Source rectangle
+            Math.round(sourceX),
+            Math.round(sourceY),
+            Math.round(sourceWidth),
+            Math.round(sourceHeight), // Source rectangle
             0,
             0,
-            targetDimensions.width,
-            targetDimensions.height, // Destination rectangle
+            Math.round(targetDimensions.width),
+            Math.round(targetDimensions.height), // Destination rectangle
         );
     }
-    return canvas;
+    return canvas.transferToImageBitmap();
 }

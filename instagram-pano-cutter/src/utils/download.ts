@@ -2,11 +2,19 @@
  * Download a single canvas as an image file
  */
 export function downloadCanvas(
-    canvas: OffscreenCanvas,
+    imageBitmap: ImageBitmap,
     filename: string,
     format: "image/png" | "image/jpeg" = "image/png",
 ): Promise<void> {
     return new Promise((resolve, reject) => {
+        const canvas = new OffscreenCanvas(
+            imageBitmap.width,
+            imageBitmap.height,
+        );
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+            ctx.drawImage(imageBitmap, 0, 0);
+        }
         return canvas
             .convertToBlob({
                 type: format,
@@ -35,12 +43,12 @@ export function downloadCanvas(
  * Download a single slice
  */
 export function downloadSlice(
-    canvas: OffscreenCanvas,
+    imageBitmap: ImageBitmap,
     index: number,
     baseName: string = "slide",
 ): Promise<void> {
     const filename = `${baseName}-${String(index + 1).padStart(2, "0")}.jpg`;
-    return downloadCanvas(canvas, filename, "image/jpeg");
+    return downloadCanvas(imageBitmap, filename, "image/jpeg");
 }
 
 /**
@@ -55,15 +63,15 @@ function delay(ms: number): Promise<void> {
  * to prevent browser blocking
  */
 export async function downloadAllSlices(
-    canvases: OffscreenCanvas[],
+    imageBitmaps: ImageBitmap[],
     baseName: string = "slide",
     delayMs: number = 150,
 ): Promise<void> {
-    for (let i = 0; i < canvases.length; i++) {
-        await downloadSlice(canvases[i], i, baseName);
+    for (let i = 0; i < imageBitmaps.length; i++) {
+        await downloadSlice(imageBitmaps[i], i, baseName);
 
         // Add delay between downloads (except for the last one)
-        if (i < canvases.length - 1) {
+        if (i < imageBitmaps.length - 1) {
             await delay(delayMs);
         }
     }

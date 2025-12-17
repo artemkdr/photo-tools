@@ -14,13 +14,17 @@ export async function convertDefaultToBlob(
     },
     canvasFactory?: ICanvasFactory,
 ): Promise<Blob> {
+    let imgBitmap: ImageBitmap | null = null;
     try {
-        const imgBitmap = await createImageBitmap(file);
+        imgBitmap = await createImageBitmap(file);
         const width = imgBitmap.width;
         const height = imgBitmap.height;
         // convert imgBitmap to buffer array
         const offscreenCanvas = new OffscreenCanvas(width, height);
-        const ctx = offscreenCanvas.getContext("2d");
+        const ctx = offscreenCanvas.getContext("2d", {
+            willReadFrequently: true,
+            alpha: false,
+        });
         if (!ctx) throw new Error("Failed to create OffscreenCanvas context");
         ctx.drawImage(imgBitmap, 0, 0, width, height);
         const imageData = ctx.getImageData(0, 0, width, height);
@@ -45,5 +49,8 @@ export async function convertDefaultToBlob(
         return result;
     } catch (e) {
         return Promise.reject(e);
+    } finally {
+        // clean up imgBitmap
+        imgBitmap?.close();
     }
 }

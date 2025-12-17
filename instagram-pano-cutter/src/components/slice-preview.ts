@@ -1,5 +1,6 @@
 import type { ICanvasFactory } from "../types";
 import { Hideable } from "./hideable";
+import { Processable } from "./processable";
 
 /**
  * Slice preview component showing all generated slices
@@ -26,6 +27,7 @@ export class SlicePreview extends Hideable {
         previewDotActive: "preview-dot--active",
     };
     private canvasFactory: ICanvasFactory;
+    private processable: Processable;
     private dotContainer?: HTMLElement;
     private dotMap: Map<HTMLElement, HTMLElement> = new Map();
     private intersectionObserver?: IntersectionObserver;
@@ -35,10 +37,17 @@ export class SlicePreview extends Hideable {
         super(container);
         this.canvasFactory = canvasFactory;
         this.element = this.render();
+        // instantiate Processable behavior using composition
+        this.processable = new Processable(this.element);
         this.previewContainer = this.element.querySelector(
             `.${this.selectorClasses.previewGrid}`,
         )!;
         container.appendChild(this.element);
+    }
+
+    // Delegate processing API to the composed Processable to preserve previous surface
+    public setIsProcessing(isProcessing: boolean): void {
+        this.processable.setIsProcessing(isProcessing);
     }
 
     private render(): HTMLElement {
@@ -58,72 +67,29 @@ export class SlicePreview extends Hideable {
     /**
      * Update the preview with new slices
      */
-    public updateSlices(slices: OffscreenCanvas[]): void {
+    public updateSlices(slices: ImageBitmap[]): void {
         const tempContainer = document.createDocumentFragment();
         const wrappers: {
-            canvas: OffscreenCanvas;
+            imageBitmap: ImageBitmap;
             previewCanvas: HTMLCanvasElement;
             wrapper: HTMLElement;
         }[] = [];
-        slices.forEach((canvas, index) => {
+        slices.forEach((imageBitmap, index) => {
             const wrapper = document.createElement("div");
             wrapper.className = this.selectorClasses.previewItem;
 
-            // Create a DPR-aware scaled preview canvas so CSS scaling stays crisp.
-            // Compute a target display width (in CSS pixels) — keep it moderate to save memory.
+            // create preview canvas placeholder
             const previewCanvas = this.canvasFactory.getCanvas(
                 1,
                 1,
                 `slice-preview-thumb-${index}`,
             );
-            const displayMaxWidth = 200; // CSS pixels — preview thumb size
-
-            // Determine scale to fit the slice into displayMaxWidth while preserving aspect ratio
-            const aspect = canvas.width / canvas.height;
-            const displayWidth = Math.min(displayMaxWidth, canvas.width);
-            const displayHeight = Math.round(displayWidth / aspect);
-
-            // Use devicePixelRatio to set backing store size for crisp rendering
-            const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
-            const adjustedWidth = Math.round(displayWidth * dpr);
-            const adjustedHeight = Math.round(displayHeight * dpr);
-
-            // Only resize/redraw if size changed
-            // as we use cached canvases from factory
-            if (
-                previewCanvas.width !== adjustedWidth ||
-                previewCanvas.height !== adjustedHeight
-            ) {
-                previewCanvas.width = adjustedWidth;
-                previewCanvas.height = adjustedHeight;
-
-                // CSS size (how it appears on the page)
-                previewCanvas.style.width = `${displayWidth}px`;
-                previewCanvas.style.height = `${displayHeight}px`;
-
-                const ctx = previewCanvas.getContext("2d");
-                if (ctx) {
-                    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-                    ctx.imageSmoothingQuality = "low";
-                    ctx.drawImage(
-                        canvas,
-                        0,
-                        0,
-                        canvas.width,
-                        canvas.height,
-                        0,
-                        0,
-                        displayWidth,
-                        displayHeight,
-                    );
-                }
-            }
 
             // Append wrapper first so it participates in layout and we can measure its CSS size
             wrapper.appendChild(previewCanvas);
             tempContainer.appendChild(wrapper);
 
-            wrappers.push({ canvas, previewCanvas, wrapper });
+            wrappers.push({ imageBitmap, previewCanvas, wrapper });
         });
 
         // destroy previous slices properly for memory management
@@ -135,9 +101,9 @@ export class SlicePreview extends Hideable {
 
         // Ensure final high-quality rendering after layout (use RAF to wait for layout)
         for (let i = 0; i < wrappers.length; i++) {
-            const { canvas, previewCanvas, wrapper } = wrappers[i];
+            const { imageBitmap, previewCanvas, wrapper } = wrappers[i];
             const refId = requestAnimationFrame(() => {
-                this.updatePreviewCanvas(previewCanvas, canvas, wrapper);
+                this.updatePreviewCanvas(previewCanvas, imageBitmap, wrapper);
             });
 
             // Remember mapping wrapper -> source canvas for later updates
@@ -314,7 +280,7 @@ export class SlicePreview extends Hideable {
      */
     private updatePreviewCanvas(
         previewCanvas: HTMLCanvasElement,
-        sourceCanvas: OffscreenCanvas,
+        sourceImageBitmap: ImageBitmap,
         wrapper: HTMLElement,
     ) {
         // check if wrapper is still in DOM
@@ -324,7 +290,7 @@ export class SlicePreview extends Hideable {
 
         const rect = wrapper.getBoundingClientRect();
         const cssWidth = Math.max(1, Math.round(rect.width));
-        const aspect = sourceCanvas.width / sourceCanvas.height;
+        const aspect = sourceImageBitmap.width / sourceImageBitmap.height;
         const cssHeight = Math.round(cssWidth / aspect);
 
         const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
@@ -339,8 +305,8 @@ export class SlicePreview extends Hideable {
 
         // check that canvas dimensions are valid
         if (
-            sourceCanvas.width > 0 &&
-            sourceCanvas.height > 0 &&
+            sourceImageBitmap.width > 0 &&
+            sourceImageBitmap.height > 0 &&
             cssWidth > 0 &&
             cssHeight > 0
         ) {
@@ -350,11 +316,11 @@ export class SlicePreview extends Hideable {
                 ctx.imageSmoothingQuality = "low";
                 ctx.clearRect(0, 0, cssWidth, cssHeight);
                 ctx.drawImage(
-                    sourceCanvas,
+                    sourceImageBitmap,
                     0,
                     0,
-                    sourceCanvas.width,
-                    sourceCanvas.height,
+                    sourceImageBitmap.width,
+                    sourceImageBitmap.height,
                     0,
                     0,
                     cssWidth,

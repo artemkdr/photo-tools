@@ -1,7 +1,7 @@
 import { SUPPORTED_EXTENSIONS } from "../../types";
 import { Hideable } from "../hideable";
 
-export type ImageLoadCallback = (image: ImageBitmap, file: File) => void;
+export type ImageLoadCallback = (image: ImageBitmap, fileName: string) => void;
 export type ErrorCallback = (message: string) => void;
 export type StartCallback = (file: File) => void;
 
@@ -33,6 +33,8 @@ export class ImageUploader extends Hideable {
         maxHeight?: number;
     };
 
+    private converterWorker: Worker | null = null;
+
     constructor(
         container: HTMLElement,
         config: {
@@ -61,6 +63,47 @@ export class ImageUploader extends Hideable {
         this.fileInput = this.element.querySelector('input[type="file"]')!;
         container.appendChild(this.element);
         this.bindEvents();
+
+        this.initializeConverterWorker();
+    }
+
+    private initializeConverterWorker(): void {
+        // create converter worker
+        this.converterWorker = new Worker(
+            new URL("./converters/worker.ts", import.meta.url),
+            { type: "module" },
+        );
+
+        this.converterWorker.onmessage = async (event: MessageEvent) => {
+            const data = event.data as
+                | {
+                      success: true;
+                      type: "convert";
+                      blob: Blob;
+                      fileName: string;
+                  }
+                | {
+                      success: false;
+                      type: "convert";
+                      error: string;
+                      fileName: string;
+                  };
+            if (data.success && data.type === "convert") {
+                try {
+                    const img = await this.loadImageBitmap(data.blob);
+                    this.onImageLoad?.(img, data.fileName);
+                } catch {
+                    this.showError("Failed to load converted image.");
+                }
+            } else if (!data.success && data.type === "convert") {
+                this.showError(`Image conversion failed: ${data.error}`);
+            }
+            this.setIsLoading(false);
+        };
+        this.converterWorker.onerror = (e) => {
+            this.showError(`Image conversion failed: ${e.message}`);
+            this.setIsLoading(false);
+        };
     }
 
     private render(): HTMLElement {
@@ -161,71 +204,28 @@ export class ImageUploader extends Hideable {
     private async handleFile(file: File): Promise<void> {
         this.clearError();
         this.onStart?.(file);
-        this.setLoading(true);
+        this.setIsLoading(true);
 
         // use worker-based converter
         try {
-            const worker = new Worker(
-                new URL("./converters/worker.ts", import.meta.url),
-                { type: "module" },
-            );
-            worker.postMessage({
+            this.converterWorker?.postMessage({
                 type: "convert",
                 file,
                 config: this.config,
             });
-            worker.onmessage = async (event: MessageEvent) => {
-                const data = event.data as
-                    | { success: true; type: "convert"; blob: Blob }
-                    | { success: false; type: "convert"; error: string };
-                if (data.success && data.type === "convert") {
-                    try {
-                        const img = await this.loadImage(data.blob);
-                        this.onImageLoad?.(img, file);
-                    } catch {
-                        this.showError("Failed to load converted image.");
-                    }
-                } else if (!data.success && data.type === "convert") {
-                    this.showError(
-                        `Image conversion failed: ${data.error}. The file may be corrupted or not supported.`,
-                    );
-                }
-                worker.terminate();
-                this.setLoading(false);
-            };
-            worker.onerror = (e) => {
-                this.showError(
-                    `Image conversion failed: ${e.message}. The file may be corrupted or not supported.`,
-                );
-                worker.terminate();
-                this.setLoading(false);
-            };
         } catch {
             this.showError(
                 "Failed to load image. The file may be corrupted or the format is not supported.",
             );
+            this.setIsLoading(false);
         }
-
-        //this.setLoading(false);
     }
 
-    private async loadImage(file: File | Blob): Promise<ImageBitmap> {
-        const imageBitmap = await createImageBitmap(file);
-        return imageBitmap;
+    private async loadImageBitmap(file: File | Blob): Promise<ImageBitmap> {
+        return await createImageBitmap(file);
     }
 
-    private showError(message: string): void {
-        const errorEl = this.element.querySelector(
-            `.${this.selectorClasses.errorMessage}`,
-        );
-        if (errorEl) {
-            errorEl.textContent = message;
-            errorEl.classList.add(this.selectorClasses.visible);
-        }
-        this.onError?.(message);
-    }
-
-    private setLoading(loading: boolean): void {
+    private setIsLoading(loading: boolean): void {
         this.isLoading = loading;
         const uploadZone = this.element.querySelector(
             `.${this.selectorClasses.uploadZone}`,
@@ -248,6 +248,17 @@ export class ImageUploader extends Hideable {
                 this.fileInput.value = "";
             } catch {}
         }
+    }
+
+    private showError(message: string): void {
+        const errorEl = this.element.querySelector(
+            `.${this.selectorClasses.errorMessage}`,
+        );
+        if (errorEl) {
+            errorEl.textContent = message;
+            errorEl.classList.add(this.selectorClasses.visible);
+        }
+        this.onError?.(message);
     }
 
     private clearError(): void {

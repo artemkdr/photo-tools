@@ -14,6 +14,8 @@ export interface ICanvasFactory {
     clearCanvas(canvas: HTMLCanvasElement | OffscreenCanvas): void;
     /** Dispose of a canvas (optional cleanup) */
     disposeCanvas(canvas: HTMLCanvasElement | OffscreenCanvas): void;
+    /** Dispose of all canvases in the pool */
+    disposeAll(): void;
 }
 
 /**
@@ -63,7 +65,7 @@ export const INSTAGRAM_DIMENSIONS: Record<
  */
 export interface SliceResult {
     /** Array of canvas elements, one per slice */
-    slices: OffscreenCanvas[];
+    slices: ImageBitmap[];
     /** Number of slices created */
     sliceCount: number;
     /** Width of each slice in pixels */

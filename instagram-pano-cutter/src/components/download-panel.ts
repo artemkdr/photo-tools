@@ -7,7 +7,7 @@ export type DownloadCallback = () => void;
  * Download panel component with individual and batch download options
  */
 export class DownloadPanel extends Hideable {
-    private slices: OffscreenCanvas[] = [];
+    private slices: ImageBitmap[] = [];
     private baseName: string = "slide";
     private isDownloading: boolean = false;
     private selectorClasses = {
@@ -144,7 +144,7 @@ export class DownloadPanel extends Hideable {
     /**
      * Update the panel with new slices
      */
-    public setSlices(slices: OffscreenCanvas[], baseName: string): void {
+    public setSlices(slices: ImageBitmap[], baseName: string): void {
         this.clear();
 
         this.slices = slices;

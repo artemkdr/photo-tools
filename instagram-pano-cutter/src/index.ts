@@ -5,9 +5,8 @@ import { SlicePreview } from "./components/slice-preview";
 import { ThemeToggle } from "./components/theme-toggle";
 import type { ICanvasFactory, SliceConfig, SliceResult, Theme } from "./types";
 import { CanvasFactory } from "./utils/canvas-factory";
+import { debounce } from "./utils/debounce";
 import { generateBaseName } from "./utils/download";
-import { sliceImage } from "./utils/slicer";
-import { throttleWithDebounce } from "./utils/throttle-with-debounce";
 
 /**
  * Main application class
@@ -19,8 +18,12 @@ class App {
     private uploader!: ImageUploader;
     private canvasFactory: ICanvasFactory;
 
+    private sliceWorker: Worker | null = null;
+    private sliceWorkerResult: SliceResult | null = null;
+    private isSliceWorkerBusy: boolean = false;
+
     private currentImageBitmap: ImageBitmap | null = null;
-    private currentFile: File | null = null;
+    private currentFileName: string | null = null;
     private config: SliceConfig = {
         aspectRatio: "4:5",
         unevenHandling: "crop",
@@ -29,27 +32,26 @@ class App {
         manualPaddingY: 0,
     };
 
+    // performance category
+    private performanceCategory: "fast" | "slow" = "fast";
+
+    // Debounced image processing to avoid excessive calls
+    private debounceProcessImage: (() => void) | null = null;
+
     constructor() {
+        // global error handler
+        window.addEventListener("error", (event) => {
+            this.handleError(event);
+        });
+
+        // test performance
+        // warm up
+        this.getDevicePerformance(10);
+        // actual test
+        this.performanceCategory = this.getDevicePerformance(100);
+
         /**
          * Canvas factory instance.
-         * Or use default one like:
-         * this.canvasFactory = {
-         *   getCanvas: (width, height) => {
-         *     const canvas = document.createElement("canvas");
-         *     canvas.width = width;
-         *     canvas.height = height;
-         *     return canvas;
-         *   },
-         *   clearCanvas: (canvas) => {
-         *     const ctx = canvas.getContext("2d");
-         *     if (ctx) {
-         *       ctx.clearRect(0, 0, canvas.width, canvas.height);
-         *     }
-         *   },
-         *   disposeCanvas: (canvas) => {
-         *     // Optional cleanup logic here
-         *   },
-         * };
          */
         this.canvasFactory = new CanvasFactory();
 
@@ -57,10 +59,6 @@ class App {
     }
 
     private init(): void {
-        // global error handler
-        window.addEventListener("error", (event) => {
-            this.handleError(event);
-        });
         // Initialize theme toggle
         const themeContainer = document.getElementById(
             "theme-toggle-container",
@@ -73,7 +71,10 @@ class App {
         });
 
         // Initialize uploader
-        const uploaderContainer = this.getUploadContainer();
+        const uploaderContainer = document.getElementById("uploader-container");
+        if (!uploaderContainer) {
+            throw new Error("Uploader container not found");
+        }
         this.uploader = new ImageUploader(
             uploaderContainer,
             {
@@ -86,11 +87,11 @@ class App {
                 onStart: () => {
                     // reset current image and file
                     this.currentImageBitmap = null;
-                    this.currentFile = null;
-                    this.updateUI(false);
+                    this.currentFileName = null;
+                    this.updateUI();
                 },
-                onImageLoad: (imageBitmap: ImageBitmap, file: File) => {
-                    this.handleImageLoad(imageBitmap, file);
+                onImageLoad: (imageBitmap: ImageBitmap, fileName: string) => {
+                    this.handleImageLoad(imageBitmap, fileName);
                 },
                 onError: (_) => {
                     // console.error("Uploader error:", error);
@@ -112,8 +113,6 @@ class App {
                 this.handleConfigChange(config);
             },
         );
-        // hide control panel until an image is loaded
-        this.controlPanel.hide();
 
         // Initialize preview
         const previewContainer = document.getElementById("preview-container");
@@ -124,8 +123,6 @@ class App {
             previewContainer,
             this.canvasFactory,
         );
-        // hide preview until an image is loaded
-        this.slicePreview.hide();
 
         // Initialize download panel
         const downloadContainer = document.getElementById(
@@ -135,25 +132,73 @@ class App {
             throw new Error("Download panel container not found");
         }
         this.downloadPanel = new DownloadPanel(downloadContainer);
-        // hide download panel until an image is loaded
-        this.downloadPanel.hide();
+
+        // Initial UI update
+        this.updateUI();
     }
 
-    private getUploadContainer(): HTMLElement {
-        const container = document.getElementById("uploader-container");
-        if (!container) {
-            throw new Error("Uploader container not found");
+    private initializeSliceWorker(): void {
+        if (this.sliceWorker) return;
+        this.sliceWorker = new Worker(
+            new URL("./utils/slicer/worker.ts", import.meta.url),
+            { type: "module" },
+        );
+        // Initialize slice worker message handler
+        this.sliceWorker.onmessage = (event: MessageEvent) => {
+            this.setIsSliceWorkerBusy(false);
+            // dispose last result slices to free memory
+            this.sliceWorkerResult?.slices.forEach((slice) => {
+                slice.close();
+            });
+            const { success, type, result } = event.data;
+            this.sliceWorkerResult = result;
+            if (type === "slice" && success === true && result) {
+                // check if this result matches the current processing id
+                if (event.data.id !== this.currentProcessingId) {
+                    // outdated result, ignore
+                    return;
+                }
+                this.processImageResult(result);
+            } else if (type === "slice" && success === false) {
+                this.handleError({
+                    message: event.data.error || "Unknown slicing error",
+                });
+            }
+        };
+        this.sliceWorker.onerror = (e) => {
+            this.setIsSliceWorkerBusy(false);
+            this.handleError({ message: `Slicing failed: ${e.message}` });
+        };
+    }
+
+    private terminateSliceWorkerImmediately(): void {
+        if (this.sliceWorker) {
+            this.sliceWorker.terminate();
+            this.sliceWorkerResult?.slices.forEach((slice) => {
+                slice.close();
+            });
+            // unsubscribe message handler
+            this.sliceWorker.onerror = null;
+            this.sliceWorker.onmessage = null;
+            this.sliceWorker.onmessageerror = null;
+            this.sliceWorker = null;
         }
-        return container;
+        this.setIsSliceWorkerBusy(false);
     }
 
-    private handleImageLoad(imageBitmap: ImageBitmap, file: File): void {
+    private setIsSliceWorkerBusy(isBusy: boolean): void {
+        this.isSliceWorkerBusy = isBusy;
+        // update UI loading state
+        this.slicePreview.setIsProcessing(isBusy);
+    }
+
+    private handleImageLoad(imageBitmap: ImageBitmap, fileName: string): void {
         if (this.currentImageBitmap) {
             // Dispose previous image bitmap to free memory
             this.currentImageBitmap.close();
         }
         this.currentImageBitmap = imageBitmap;
-        this.currentFile = file;
+        this.currentFileName = fileName;
 
         // validate image dimensions
         // minimum 500x500
@@ -173,11 +218,27 @@ class App {
             return;
         }
 
+        const pixelsCount = imageBitmap.width * imageBitmap.height;
+
+        // initialize process image debounce with a delay adapted to the image size
+        const baseDelay = this.performanceCategory === "fast" ? 50 : 300;
+        this.debounceProcessImage = debounce(
+            () => {
+                this.processImage();
+            },
+            baseDelay +
+                (pixelsCount > 5000 * 5000
+                    ? 50
+                    : pixelsCount > 2000 * 2000
+                      ? 30
+                      : 10),
+        );
+
         // Process and update info display
         this.processImage();
 
         // update UI visibility
-        this.updateUI(true);
+        this.updateUI();
 
         // Fallback for browsers that don't support :has(): toggle a class on root
         // so CSS can target `.app-container.has-image` as a substitute for :has().
@@ -188,8 +249,8 @@ class App {
         }
     }
 
-    private updateUI(imageUploaded: boolean): void {
-        if (!imageUploaded) {
+    private updateUI(): void {
+        if (!this.currentImageBitmap) {
             // hide all panels
             this.controlPanel.hide();
             this.slicePreview.hide();
@@ -210,17 +271,36 @@ class App {
         }
     }
 
-    private readonly throttlerProcessImage = throttleWithDebounce(() => {
-        this.processImage();
-    }, 100);
-
     private handleConfigChange(config: SliceConfig): void {
-        this.config = config;
-
-        // Re-process if we have an image
-        if (this.currentImageBitmap) {
-            this.throttlerProcessImage();
+        // check if config actually changed
+        // compaing JSON strings for simplicity (it's not 100% reliable but good enough here)
+        if (JSON.stringify(config) === JSON.stringify(this.config)) {
+            return;
         }
+        this.config = config;
+        this.debounceProcessImage?.();
+    }
+
+    /**
+     * Estimates CPU performance by counting operations in a fixed time window.
+     * @param {number} duration - How long to run the test in milliseconds (default 50ms).
+     * @returns category - 'fast' | 'slow'.
+     */
+    private getDevicePerformance(duration = 50) {
+        const start = performance.now();
+        let operations = 0;
+
+        // We use a tight loop to block the main thread intentionally
+        while (performance.now() - start < duration) {
+            // Perform some heavy lifting
+            Math.sqrt(Math.random() * 10000);
+            operations++;
+        }
+
+        // Calculate score: Operations per millisecond
+        const score = Math.floor(operations / duration);
+        // Determine performance category based on score
+        return score > 2000 ? "fast" : "slow";
     }
 
     private handleThemeChange(_theme: Theme): void {
@@ -245,42 +325,42 @@ class App {
         alert(`Error: ${message}`);
     }
 
-    private previousProcessSnapshot: {
-        imageBitmap: ImageBitmap | null;
-        config: string | null;
-    } = {
-        imageBitmap: null,
-        config: null,
-    };
+    private currentProcessingId: string | null = null;
 
-    private processImage(): SliceResult | undefined {
-        if (!this.currentImageBitmap || !this.currentFile) return;
+    private processImage(): void {
+        if (!this.currentImageBitmap) return;
 
-        // if no changes, return
-        if (
-            this.currentImageBitmap ===
-                this.previousProcessSnapshot.imageBitmap &&
-            JSON.stringify(this.config) === this.previousProcessSnapshot.config
-        ) {
-            return;
+        // generate a unique id for this processing task
+        this.currentProcessingId =
+            Date.now().toString(36) + Math.random().toString(36).substring(2);
+
+        // slice image using worker
+        if (this.isSliceWorkerBusy) {
+            this.terminateSliceWorkerImmediately();
         }
+        this.initializeSliceWorker();
+        if (this.sliceWorker) {
+            this.setIsSliceWorkerBusy(true);
+            // Post message in a setTimeout to avoid blocking UI update
+            // because requestIdleCallback is not supported in Safari and Safari iOS
+            setTimeout(() => {
+                this.sliceWorker?.postMessage({
+                    type: "slice",
+                    id: this.currentProcessingId,
+                    imageBitmap: this.currentImageBitmap,
+                    config: this.config,
+                });
+            }, 1);
+        }
+    }
 
-        this.previousProcessSnapshot.imageBitmap = this.currentImageBitmap;
-        this.previousProcessSnapshot.config = JSON.stringify(this.config);
-
-        // Slice the image
-        const result = sliceImage(
-            this.currentImageBitmap,
-            this.config,
-            this.canvasFactory,
-        );
-
+    private processImageResult(result: SliceResult): void {
         // Update preview
         this.slicePreview.updateSlices(result.slices);
 
         // Update download panel
         const baseName = `${generateBaseName(
-            `${this.currentFile.name}`,
+            `${this.currentFileName}`,
         )}-${Date.now()}`;
         this.downloadPanel.setSlices(result.slices, baseName);
 
@@ -289,8 +369,6 @@ class App {
         if (slicesEl) {
             slicesEl.textContent = result.sliceCount.toString();
         }
-
-        return result;
     }
 }
 
