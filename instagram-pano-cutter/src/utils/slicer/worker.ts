@@ -58,6 +58,6 @@ self.onmessage = async (event: MessageEvent) => {
             error: (e as Error).message,
         });
     } finally {
-        imageBitmap.close();
+        imageBitmap?.close();
     }
 };

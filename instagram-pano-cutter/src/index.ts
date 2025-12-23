@@ -41,7 +41,9 @@ class App {
     constructor() {
         // global error handler
         window.addEventListener("error", (event) => {
-            this.handleError(event);
+            // errors must be hidden for UI in this global handler
+            // as we don't want to spam users with alerts for unexpected errors
+            this.handleError({ message: event.message, hidden: true });
         });
 
         // test performance
@@ -148,7 +150,7 @@ class App {
             this.setIsSliceWorkerBusy(false);
             // dispose last result slices to free memory
             this.sliceWorkerResult?.slices.forEach((slice) => {
-                slice.close();
+                slice?.close();
             });
             const { success, type, result } = event.data;
             this.sliceWorkerResult = result;
@@ -162,12 +164,16 @@ class App {
             } else if (type === "slice" && success === false) {
                 this.handleError({
                     message: event.data.error || "Unknown slicing error",
+                    hidden: true,
                 });
             }
         };
         this.sliceWorker.onerror = (e) => {
             this.setIsSliceWorkerBusy(false);
-            this.handleError({ message: `Slicing failed: ${e.message}` });
+            this.handleError({
+                message: `Slicing failed: ${e.message}`,
+                hidden: true,
+            });
         };
     }
 
@@ -175,7 +181,7 @@ class App {
         if (this.sliceWorker) {
             this.sliceWorker.terminate();
             this.sliceWorkerResult?.slices.forEach((slice) => {
-                slice.close();
+                slice?.close();
             });
             // unsubscribe message handler
             this.sliceWorker.onerror = null;
@@ -193,10 +199,9 @@ class App {
     }
 
     private handleImageLoad(imageBitmap: ImageBitmap, fileName: string): void {
-        if (this.currentImageBitmap) {
-            // Dispose previous image bitmap to free memory
-            this.currentImageBitmap.close();
-        }
+        // Dispose previous image bitmap to free memory
+        this.currentImageBitmap?.close();
+
         this.currentImageBitmap = imageBitmap;
         this.currentFileName = fileName;
 
@@ -315,8 +320,10 @@ class App {
             "hidden" in error &&
             error.hidden === true
         ) {
+            console.error(message);
             return;
         }
+        // show errors to user only for known errors
         this.showErrorMessage(message);
     }
 

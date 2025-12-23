@@ -17,10 +17,16 @@ export function sliceImage(
     const { aspectRatio, unevenHandling, paddingColor } = config;
     const targetDimensions = INSTAGRAM_DIMENSIONS[aspectRatio];
 
-    const sourceCanvas = buildSourceCanvas(config, imageBitmap, canvasFactory);
+    const sourceImageBitmap = buildSourceImageBitmap(
+        config,
+        imageBitmap,
+        canvasFactory,
+    );
+    // Track if we created a new ImageBitmap for cleanup
+    const shouldCloseSource = sourceImageBitmap !== imageBitmap;
 
-    const imageWidth = sourceCanvas.width;
-    const imageHeight = sourceCanvas.height;
+    const imageWidth = sourceImageBitmap.width;
+    const imageHeight = sourceImageBitmap.height;
 
     const conversionRatio = targetDimensions.height / imageHeight;
 
@@ -67,7 +73,13 @@ export function sliceImage(
             ctx.fillRect(0, 0, paddedWidth, imageHeight);
             const offsetX = Math.round((paddedWidth - imageWidth) / 2);
             // center the image
-            ctx.drawImage(sourceCanvas, offsetX, 0, imageWidth, imageHeight);
+            ctx.drawImage(
+                sourceImageBitmap,
+                offsetX,
+                0,
+                imageWidth,
+                imageHeight,
+            );
         } else if (unevenHandling === "crop") {
             // try to find optimal number of slices
             // objectif: we have to crop as less as possible
@@ -96,7 +108,7 @@ export function sliceImage(
 
             // Center-crop the whole image horizontally and vertically
             ctx.drawImage(
-                sourceCanvas,
+                sourceImageBitmap,
                 Math.round(optimalCropping.x),
                 Math.round(optimalCropping.y),
                 cropWidth,
@@ -145,7 +157,7 @@ export function sliceImage(
             );
             // Draw the image resized to fit within the target dimensions
             ctx.drawImage(
-                sourceCanvas,
+                sourceImageBitmap,
                 0,
                 0,
                 imageWidth,
@@ -170,7 +182,7 @@ export function sliceImage(
             adjustedCanvas.width = imageWidth;
             adjustedCanvas.height = imageHeight;
         }
-        ctx.drawImage(sourceCanvas, 0, 0, imageWidth, imageHeight);
+        ctx.drawImage(sourceImageBitmap, 0, 0, imageWidth, imageHeight);
     }
     // now slice the (possibly adjusted) image
     for (let i = 0; i < sliceCount; i++) {
@@ -190,6 +202,11 @@ export function sliceImage(
         );
     }
 
+    // Clean up intermediate ImageBitmap created for manual padding
+    if (shouldCloseSource) {
+        sourceImageBitmap?.close();
+    }
+
     return {
         slices,
         sliceCount: slices.length,
@@ -199,11 +216,11 @@ export function sliceImage(
     };
 }
 
-function buildSourceCanvas(
+function buildSourceImageBitmap(
     config: SliceConfig,
     imageBitmap: ImageBitmap,
     canvasFactory: ICanvasFactory,
-): CanvasImageSource & { width: number; height: number } {
+): ImageBitmap {
     const { manualPaddingX, manualPaddingY } = config;
 
     // add one at each side
@@ -240,7 +257,9 @@ function buildSourceCanvas(
         );
     }
 
-    return canvas;
+    // Convert to ImageBitmap for better cross-browser compatibility
+    // Older iOS Safari has issues drawing from OffscreenCanvas to OffscreenCanvas
+    return canvas.transferToImageBitmap();
 }
 
 function createFullSlice(
