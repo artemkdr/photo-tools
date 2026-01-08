@@ -23,7 +23,7 @@ export async function convertHeicToBlob(
             await file.arrayBuffer(),
         ) as unknown as ArrayBufferLike;
         performance.mark("heic-read-end");
-        
+
         performance.mark("heic-decode-start");
         const { width, height, data } = await decode({ buffer });
         performance.mark("heic-decode-end");
@@ -41,7 +41,7 @@ export async function convertHeicToBlob(
             quality: config.quality,
         });
         performance.mark("heic-encode-end");
-        
+
         // clean up canvas
         canvasFactory?.clearCanvas(canvas);
         return result;
