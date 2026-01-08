@@ -17,30 +17,31 @@ export async function convertHeicToBlob(
     canvasFactory?: ICanvasFactory,
 ): Promise<Blob> {
     try {
+        performance.mark("heic-read-start");
         // heic-decode exports a `decode` function which accepts ArrayBuffer/Uint8Array
         const buffer = new Uint8Array(
             await file.arrayBuffer(),
         ) as unknown as ArrayBufferLike;
+        performance.mark("heic-read-end");
+
+        performance.mark("heic-decode-start");
         const { width, height, data } = await decode({ buffer });
+        performance.mark("heic-decode-end");
 
         if (!width || !height || !data)
             throw new Error("Invalid HEIC decode result");
 
+        performance.mark("heic-canvas-start");
         const canvas = dataToCanvas(data, width, height, config, canvasFactory);
+        performance.mark("heic-canvas-end");
 
-        const result = await new Promise<Blob>((resolve, reject) => {
-            return canvas
-                .convertToBlob({
-                    type: config.format,
-                    quality: config.quality,
-                })
-                .then((b) => {
-                    resolve(b);
-                })
-                .catch((e) => {
-                    reject(e);
-                });
+        performance.mark("heic-encode-start");
+        const result = await canvas.convertToBlob({
+            type: config.format,
+            quality: config.quality,
         });
+        performance.mark("heic-encode-end");
+
         // clean up canvas
         canvasFactory?.clearCanvas(canvas);
         return result;
